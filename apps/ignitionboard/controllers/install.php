@@ -23,7 +23,7 @@ class Install extends Controller {
 	 */
 	function intro() {
 		// Does the challenge match the server one?
-		if(!$this->security->check_challenge('challenge', 'install')) {
+		if($this->security->check_challenge('challenge', 'install')) {
 			// Go to end if done.
 			if($this->config->board->core->installed) {
 				// GO TO END I SAY
@@ -266,15 +266,15 @@ class Install extends Controller {
 				'<li class="good">The config file at "' . APPPATH . 'config/database.php" is writeable.</li>' :
 				'<li class="exclamation">The config file at "' . APPPATH . 'config/database.php" is not writeable.</li>';
 		// Progress #2: Are conf. settings valid?
-		$data['DBCONFSTATE'] = $this->config->_check_dbconf() ?
+		$data['DBCONFSTATE'] = $this->database->utility->check_config() ?
 				'<li class="good">Valid database connection settings are located in your config files.</li>' :
 				'<li class="bad">No valid connection settings were found in your config files.</li>' ;
 		// Progress #3: Database tables set up?
-		$data['DBSTATE'] = ($this->config->_check_dbconf() && ($this->db->table_exists('config'))) ?
+		$data['DBSTATE'] = ($this->database->utility->check_config() && ($this->db->table_exists('config'))) ?
 				'<li class="good">The database tables have been set up.</li>' :
 				'<li class="bad">The database tables have not yet been set up.</li>';
 		// Progress #4: Admin account set up?
-		$data['ADMINSTATE'] = ($this->config->_check_dbconf() && ($this->db->table_exists('config') && ($this->db->count_all('user') > 0))) ?
+		$data['ADMINSTATE'] = ($this->database->utility->check_config() && ($this->db->table_exists('config') && ($this->db->count_all('user') > 0))) ?
 				'<li class="good">An administrator account has been set up.</li>' :
 				'<li class="bad">An administrator account has not yet been set up.</li>';
 		// Progress #5: Board installed?

@@ -12,7 +12,7 @@ class DB_Session extends DB_Model_Abstract {
 	 */
 	public static final function set_table_definition() {
 		// Set up columns.
-		self::has_field('session_id', 'char', 40, array('unique' => TRUE, 'primary_key' => TRUE)); // ID.
+		self::has_field('session_id', 'char', 40, array('unique' => TRUE, 'primary' => TRUE)); // ID.
 		self::has_field('ip_address', 'varchar', 16);
 		self::has_field('user_agent', 'varchar', 50);
 		self::has_field('last_activity', 'varchar', 10);

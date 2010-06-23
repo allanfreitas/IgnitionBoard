@@ -24,7 +24,7 @@ class CI_Session {
 	/**
 	 * Rolls a random number between 1 and this variable. If it matches 1, we delete old sessions.
 	 */
-	private $delete_old = 5;
+	private $divisor = 10;
 	/**
 	 * Stores the user's session data in an array. This is serialized for storage.
 	 */
@@ -57,13 +57,12 @@ class CI_Session {
 	public final function initialize() {
 		// Set up some variables.
 		$this->now = time();
-		$this->ttl = (integer) $this->CI->config->item("sess_expiration");
 		// Generic checksum of empty session array.
 		$this->session_checksum = md5('a:0:{}');
 		// Only access database if we can.
 		if($this->CI->database->loaded == TRUE) {
 			// Should we wipe old sessions?
-			if(mt_rand(1, $this->delete_old) == 1) {
+			if(mt_rand(1, $this->divisor) == 1) {
 				// Delete old sessions.
 				$this->destroy_old_sessions();
 			}
@@ -85,7 +84,7 @@ class CI_Session {
 	 * @param string $key The key of the item to retrieve.
 	 */
 	public final function get($key, $force_update = FALSE) {
-		// Force a session data update?
+		// Force a session data update, or do we still need to get it anyways?
 		if($force_update == TRUE || $this->session_data == NULL)
 			$this->get_session_data();
 		// Does an item with this key exist?
@@ -102,7 +101,7 @@ class CI_Session {
 	 * a series of strings representing keys and data.
 	 */
 	public final function set() {
-		// Force a session data update?
+		// Did we ever actually GET the session data?
 		if($this->session_data == NULL)
 			$this->get_session_data();
 		// Do we have an array or some strings?
@@ -127,7 +126,7 @@ class CI_Session {
 	 * Removes data from the user's session array.
 	 */
 	public final function remove($key) {
-		// Force a session data update?
+		// Did we ever actually GET the session data?
 		if($this->session_data == NULL)
 			$this->get_session_data();
 		// Unset anything like this.

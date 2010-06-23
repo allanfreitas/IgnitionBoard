@@ -61,9 +61,9 @@ abstract class DB_Model_Abstract {
 			self::$CI->db->insert($this->table['name'][0], $this->data);
 		} else {
 			// Update if row exists.
-			if($this->db->where('id', $data['id'])->from($this->table['name'][0])->count_all_results() > 0) {
+			if(self::$CI->db->where($this->table['id'], $this->id)->from($this->table['name'][0])->count_all_results() > 0) {
 				// Record found, update.
-				self::$CI->db->where('id', $data['id'])->update($this->table['name'][0], $this->data);
+				self::$CI->db->where($this->table['id'], $this->id)->update($this->table['name'][0], $this->data);
 			} else {
 				// Not found, insert.
 				self::$CI->db->insert($this->table['name'][0], $this->data);
@@ -75,7 +75,7 @@ abstract class DB_Model_Abstract {
 	 */
 	public function delete() {
 		// Delete the row where the ID is the one we have.
-		self::$CI->db->where('id', $this->data['id'])->delete($this->table['name'][0]);
+		self::$CI->db->where($this->table['id'], $this->data['id'])->delete($this->table['name'][0]);
 	}
 	/**
 	 * Takes a given array and sets up the object with the present data.
@@ -127,15 +127,8 @@ abstract class DB_Model_Abstract {
 				// Don't error out, instead go through our fields and find the field which is now
 				// acting as a primary key IF identifiers are disabled.
 				if($this->table['identifier'] == FALSE) {
-					// Find the field.
-					foreach($this->table['fields'] as $field => $data) {
-						// Is this field the primary key?
-						if($data['primary'] == TRUE) {
-							// Return the value of this.
-							return $this->_call_get_mutator($field);
-							break;
-						}
-					}
+					// Call the get mutator on the data at the ID field.
+					return $this->_call_get_mutator($this->table['id']);
 				} else {
 					// Okies, NOW you can error out.
 					self::$CI->error->show("database_field_not_found", array(
@@ -235,7 +228,8 @@ abstract class DB_Model_Abstract {
 				'relations' => array(),
 				'mutators' => array(),
 				'timestamps' => FALSE,
-				'identifier' => TRUE
+				'identifier' => TRUE,
+				'id' => 'id'
 			);
 		}
 	}
@@ -295,6 +289,11 @@ abstract class DB_Model_Abstract {
 				$registry = array_merge(array($name => $field), $registry);
 			else
 				$registry[$name] = $field;
+			// Was this field a primary key?
+			if(isset($params['primary']) && $params['primary'] == TRUE) {
+				// It was! WOW! Include a link to this field as the ID.
+				self::$CI->database->maintenance->tables[self::$UID]['id'] = $name;
+			}
 		} else {
 			// Error out. Do a fatal one too! :D
 			self::$CI->error->show('database_table_initialized', $name);

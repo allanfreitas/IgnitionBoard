@@ -72,11 +72,12 @@ class Database_Utility extends Database {
 			require $this->registered_tables[$name];
 			// Initialise it, pass a unique identifier along with it so it knows what to access.
 			// The UID will be the class name.
-			$name::initialize($name);
+			// Bugfix: You can't call static methods through variable functions in PHP 5.2. Use call_user_func();
+			call_user_func(array($name, "initialize"), $name);
 			// Set the table definition.
-			$name::set_table_definition();
+			call_user_func(array($name, "set_table_definition"));
 			// And now wipe the UID.
-			$name::uninitialize();
+			call_user_func(array($name, "uninitialize"));
 			// May as well remove from the tables array.
 			unset($this->registered_tables[$name]);
 		} else {
@@ -99,11 +100,11 @@ class Database_Utility extends Database {
 			require $file;
 			// Initialise it, pass a unique identifier along with it so it knows what to access.
 			// The UID will be the class name.
-			$class::initialize($class);
+			call_user_func(array($class, "initialize"), $class);
 			// Set the table definition.
-			$class::set_table_definition();
+			call_user_func(array($class, "set_table_definition"));
 			// And now wipe the UID.
-			$class::uninitialize();
+			call_user_func(array($class, "uninitialize"));
 		}
 		// Empty the array.
 		$this->registered_tables = array();
