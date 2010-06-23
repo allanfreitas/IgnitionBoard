@@ -1,0 +1,288 @@
+/*******************************
+**   Font styling goes here.  **
+*******************************/
+
+/* Reset all font families to defaults. */
+html, body, h1, h2, h3, h4, h5, h6 {
+	font-family:'Lucida Sans', 'Lucida Grande', 'Trebuchet MS', 'Helvetica', 'Verdana', 'Arial', sans-serif;
+	font-size:87.5%; /* 14px, for a conversion chart @see http://pxtoem.com/  */
+	font-weight:normal; font-style:normal; /* Fixes headers, dead! */
+}
+/* Headers should use a different font, ideally. */
+h1 {
+	
+}
+/* Sort out headers. */
+h1 {
+	line-height:128px; height:128px; font-size:257.1%; max-width:585px; float:left; color:rgb(248,248,248);
+}
+h2 {
+	font-size:157.1%; height:22px; line-height:22px; color:rgb(248,248,248);
+	padding:5px; background:rgb(249,186,29) repeat-x top left url('../img/board/header_32.png');
+	/* Fixes the issue where child elements overflow rounded borders */
+	border-top-left-radius:3px; -webkit-border-top-left-radius:3px;
+	border-top-right-radius:3px; -webkit-border-top-right-radius:3px;
+	-moz-border-radius-topleft:3px; -moz-border-radius-topright:3px;
+}
+h3 {
+	font-size:157.1%; height:26px; line-height:26px;
+}
+
+/*******************************
+** Element styling goes here. **
+*******************************/
+html, body {
+	background:rgb(236,236,236); color:rgb(60,60,60); /* Sort out colouring of elements and text. */
+	padding-bottom:5px;
+}
+/* Link styling. */
+a {
+	text-decoration:none; color:rgb(255,120,0); /* Remove underlines (for now), change colour. */
+}
+a:hover {
+	text-decoration:underline; color:rgb(249,186,29); /* Add underline when hovered? */
+}
+/* Add "block links", which are links in boxes. */
+a.emphasis {
+	background:rgb(251,166,20); color:rgb(248,248,248); padding:4px;
+	border-radius:4px; -wekbit-border-radius:4px; -moz-border-radius:4px;
+}
+a.emphasis img {
+	padding-right:4px; vertical-align:middle;
+}
+a.emphasis:hover {
+	background:rgb(249,186,29); text-decoration:none;
+}
+/* Paragraphs need some meat... */
+p {
+	padding:5px; text-align:justify;
+}
+#board-content ul {
+	list-style:inside circle none;
+	margin:10px 20px;
+}
+#board-content li {
+	background:url('../img/icons/16x16/bullet.png') 0px 2px no-repeat;
+	min-height:20px; line-height:20px; display:block; padding-left:20px;
+}
+#board-content li.good {
+	/* LI's are a pain to style. So use a background and make it a block. */
+	background:url('../img/icons/16x16/accept.png') center left no-repeat;
+}
+#board-content li.exclamation {
+	/* LI's are a pain to style. So use a background and make it a block. */
+	background:url('../img/icons/16x16/exclamation.png') center left no-repeat;
+}
+#board-content li.bad {
+	/* LI's are a pain to style. So use a background and make it a block. */
+	background:url('../img/icons/16x16/error.png') center left no-repeat;
+}
+
+/*******************************
+**   Form styling goes here.  **
+*******************************/
+
+legend {
+	font-size:128.6%; display:block; padding:5px;
+}
+/* Field items are special. */
+.field {
+	padding:5px 20px; text-align:justify;
+}
+.field label {
+	display:block; font-size:114.3%; line-height:140%;
+}
+.field input {
+	width:200px; border:1px solid rgb(220,220,220); height:20px;
+}
+.field input[type=checkbox] {
+	width:auto !important;
+}
+.field input[type=submit], .field input[type=reset] {
+	background:rgb(240,240,240);
+	color:rgb(100,100,100);
+}
+.field input[type=submit]:hover, .field input[type=reset]:hover {
+	background:rgb(244,244,244);
+	color:rgb(60,60,60);
+}
+.field input:hover {
+	border:1px solid rgb(249,186,29);
+}
+.field input:active, .field input:focus {
+	border:1px solid rgb(251,166,20);
+}
+.field p {
+	text-align:center;
+}
+.field div {
+	font-style:italic;
+}
+
+/*******************************
+**    ID styling goes here.   **
+*******************************/
+
+/* Sort out frame styling up here. */
+#board-header, #board-content, #board-footer, #board-navigation {
+	border:1px solid rgb(220,220,220); border-top:none; border-bottom:none; /* Borders! */
+	background:rgb(248,248,248); /* Backgrounds! */
+	min-width:910px; max-width:1360px; width:95%; margin:auto; padding:5px; /* Centre it, pad it... */
+}
+
+/* The border-frame is the bit outside of the forum borders. */
+#board-frame {
+	
+}
+/* Board header */
+#board-header { 
+	height:128px; background:rgb(249,186,29) repeat-x top left url('../img/board/header.png'); padding:0px 5px;
+}
+#board-header h1 img {
+	vertical-align:middle; padding-right:10px; /* Give spacing between image and text, centre image */
+	height:96px; width:96px; /* Correct sizing */
+}
+/* "You are logged in as <name>" box. */
+#board-header-userinfo {
+	float:right; height:66px; margin-top:16px; background:rgb(248,248,248); width:315px; padding:15px 5px;
+	/* Push it to the right to avoid padding. */
+	position:relative; left:5px;
+	/* ROUNDED BORDERZ */
+	border-top-left-radius:10px; -webkit-border-top-left-radius:10px;
+	border-bottom-left-radius:10px; -webkit-border-bottom-left-radius:10px;
+	-moz-border-radius-topleft:10px; -moz-border-radius-bottomleft:10px;
+}
+/* Acts as a line of text. */
+#board-header-userinfo div {
+	line-height:22px; height:22px; text-align:right; width:244px; padding-right:5px;
+}
+/* Acts as a user avatar. */
+#board-header-userinfo > img {
+	float:right; height:64px; width:64px; display:block;
+	border:1px solid rgb(220,220,220);
+}
+/* Board navigation */
+#board-navigation {
+	background:rgb(255,255,255); border-bottom:1px solid rgb(220,220,220); height:16px; padding:0px 5px;
+}
+#board-navigation-pages { float:right; height:16px; position:relative; left:5px; }
+#board-navigation-location { float:left; height:16px; position:relative; right:5px; }
+#board-navigation-location li, #board-navigation-pages li {
+	float:left; display:block; height:16px; line-height:16px; padding:0px 10px; text-align:center;
+	min-width:66px;
+}
+#board-navigation-location li { border-right:1px solid rgb(220,220,220); }
+#board-navigation-pages li { border-left:1px solid rgb(220,220,220); padding:0px; }
+#board-navigation-pages li a { display:block; padding:0px 10px; min-width:66px; }
+/* Content */
+#board-content {
+	line-height:140%;
+}
+/* Footer */
+#board-footer {
+	line-height:140%; border-bottom:1px solid rgb(220,220,220); /* Makes it look better. */
+}
+
+/*******************************
+**  Class styling goes here.  **
+*******************************/
+
+/* Generic stuffs. */
+.clear {
+	clear:both;
+}
+
+/* Board Content */
+/* Categories */
+.board-category {
+	width:95%; border:1px solid rgb(220,220,220); background:rgb(255,255,255); margin:auto;
+	border-radius:4px; -webkit-border-radius:4px; -moz-border-radius:4px; margin-top:30px;
+}
+/* Board category items are the board listings. */
+.board-category-item {
+	height:64px; border-bottom:1px solid rgb(220,220,220); overflow:hidden;
+}
+/* Icon for this board. */
+.board-category-item-icon {
+	float:left; width:48px; line-height:64px; padding:0px 5px; text-align:center; height:64px;
+	border-right:1px solid rgb(220,220,220); margin-right:5px;
+}
+/* Title/Board Desc go in here. */
+.board-category-item-details {
+	line-height:140%; padding:0px 5px;
+}
+/* This part floats to the right, has last-poster details */
+.board-category-item-latest {
+	float:right; line-height:21.5px; width:175px; padding:0px 5px; text-align:right;
+	border-left:1px solid rgb(220,220,220); height:64px; margin-left:5px;
+}
+.board-category-item-latest div {
+	height:21.5px;
+}
+/* Last board-category-item shouldn't have a bottom border. */
+.board-category-item:last-child {
+	border-bottom:none;
+}
+/* Board dialogs/notifications */
+/* Dialogs house forms, mostly. They're the generic box things. */
+.board-dialog {
+	width:600px; border:1px solid rgb(220,220,220); background:rgb(255,255,255); margin:auto;
+	border-radius:4px; -webkit-border-radius:4px; -moz-border-radius:4px; margin-top:30px;
+}
+.board-dialog-small {
+	width:250px; border:1px solid rgb(220,220,220); background:rgb(255,255,255); margin:auto;
+	border-radius:4px; -webkit-border-radius:4px; -moz-border-radius:4px; margin-top:30px;
+}
+/* Descriptive text here. */
+.board-dialog-details {
+	line-height:140%; padding:5px;
+}
+/* Notifications come in two flavours and appear as bars, if you will. */
+.board-notification {
+	height:32px; width:95%; margin:auto; text-indent:43px; padding:3px 0px; line-height:32px;
+	border-radius:4px; -webkit-border-radius:4px; -moz-border-radius:4px; margin-top:30px;
+}
+.board-notification-validation {
+	height:32px; width:95%; margin:auto; text-indent:43px; padding:3px 0px; line-height:32px;
+	border-radius:4px; -webkit-border-radius:4px; -moz-border-radius:4px; margin-top:4px; 
+}
+.board-notification-dialog {
+	width:600px;
+}
+/* "good" and "bad" refer to the colour of this notification. */
+.board-notification-good {
+	border:1px solid rgb(123,214,123);
+	background:rgb(218,241,218) 3px 3px no-repeat url('../img/icons/32x32/accept.png');
+}
+.board-notification-bad {
+	border:1px solid rgb(214,123,123);
+	background:rgb(241,218,218) 3px 3px no-repeat url('../img/icons/32x32/error.png');
+}
+
+
+/*******************************
+** Login/Registration styles. **
+*******************************/
+
+.reg_form {
+	width:600px;
+	border:1px solid rgb(220,220,220);
+	background:rgb(255,255,255);
+	margin:auto;
+	border-radius:4px;
+	-webkit-border-radius:4px;
+	-moz-border-radius:4px;
+	margin-top:30px;
+}
+
+.reg_form fieldset {
+	float:right;
+}
+
+.reg_form h2, .login_form h2 {
+	text-align:center;
+}
+
+#board-footer p {
+	text-align:center;
+}

@@ -1,0 +1,15 @@
+# Ignore the CodeIgniter 'system' folder, along with the index.php file
+public_html/forum/index.php
+sys/*
+sys/**/*
+apps/ignitebb/config/
+
+# others...
+.htaccess
+.projects
+nbproject
+robots.txt
+php.ini
+
+# Annoying bits..
+*~
