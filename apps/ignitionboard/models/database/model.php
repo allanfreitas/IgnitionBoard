@@ -37,7 +37,7 @@ abstract class DB_Model_Abstract {
 	 *
 	 * Called when a DERIVED CLASS is initialized. Use this to set up the properties the model has.
 	 */
-	public function DB_Model_Abstract() {
+	public function __construct() {
 		// Determine the UID this class has. Using __CLASS__ doesn't work, as it always returns the
 		// base class, which is DB_Model_Abstract. We want the inherited class, so DB_Config or DB_User.
 		$this->class = get_class($this);

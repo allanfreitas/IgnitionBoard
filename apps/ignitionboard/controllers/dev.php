@@ -39,7 +39,33 @@ class Dev extends IBB_Controller {
 	function drop_db_tables() {
 		$this->database->maintenance->drop_tables();
 	}
+	function cache_library() {
+		$this->output->append_output("<pre>Cache Library Debugger.");		
+		$this->output->append_output("\nThe idea of this is to create a very long, exhaustive loop. First load will take a while, second will be returned from the cache near-instantly.");
+		$this->output->append_output("\nNote: echo/print/die statements do NOT get cached. Templates/views do.");
+		for($i=0; $i<100000; $i++) {
+			$this->output->append_output("\n\t" . $i);
+		}
+		// Finish debug output.
+		$this->output->append_output("\nController Execution Complete.</pre>");
+	}
 	function session_library() {
+		// Write random values, retrieve random values. Cause some overhead.
+		$values = array();
+		for($i = 1; $i <= 10; $i++) {
+			$values[] = array($i, mt_rand(1,500));
+		}
+		foreach($values as $value) {
+			if($this->session->get($value[0]) == FALSE) {
+			echo "Writing data: " . $value[0] . " => " . $value[1] . "<br />";
+			$this->session->set($value[0], $value[1]);
+			}
+			echo "Data Read: " . $value[0] . " => " . $this->session->get($value[0]) . "<br />";
+			if(mt_rand(1, 10) == 10) {
+				echo "Data Removed: " . $value[0] . "<br />";
+				$this->session->remove($value[0]);
+			}
+		}
 	}
 	function security_library() {
 		$this->error->debug("<pre>Security Library Debugger.", 1);

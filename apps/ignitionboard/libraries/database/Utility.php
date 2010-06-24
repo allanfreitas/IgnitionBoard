@@ -17,9 +17,9 @@ class Database_Utility extends Database {
 	/**
 	 * Constructor
 	 */
-	public function Database_Utility() {
+	public function __construct() {
 		// Inherit the database.
-		parent::Database();
+		parent::__construct();
 		// Assign the _load_table() function as a candidate for an autoloader.
 		spl_autoload_register(array($this, '_load_table'));
 	}

@@ -7,19 +7,160 @@
  */
 class Cache {
 	/**
+	 * Stores a reference to the CI super-object.
+	 */
+	private $CI;
+	/**
 	 * Storage array containing each created cache "store", which itself is an array containing data.
 	 *
 	 * @var array Cache stores.
 	 */
 	private $cache = array();
 	/**
+	 * Chance for the delete_output() function to be called to remove old cache files.
+	 */
+	private $divisor = 10;
+	/**
 	 * Constructor
 	 * 
-	 * Sets up default cache stores for usage across all libraries/models.
+	 * Sets up CI reference.
 	 */
-	public final function Cache() {
+	public final function __construct() {
+		// Get a reference of the CI super-object.
+		$this->CI =& get_instance();
+	}
+	/**
+	 * Sets up needed cache stores and clears expired page caches.
+	 */
+	public final function initialize() {
 		// Add in the function results store. This is used for storing results from intensive functions.
 		$this->create("functions");
+		// Clear up old cache outputs?
+		if(mt_rand(1, $this->divisor) == 1) {
+			$this->cache_clear();
+		}
+	}
+	/**
+	 * Caches the given output string into a file specific for the current controller and user.
+	 * The cache file lasts as long as the cache duration config setting.
+	 */
+	public final function cache_output() {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// User need a cache dir?
+			$this->cache_mkdir();
+			// Get the output.
+			$output = $this->CI->output->get_output();
+			// Get the user's session ID.
+			$session = $this->CI->session->get_id();
+			// Write the output into a new file with this controller name.
+			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			// Go!
+			file_put_contents(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache', $output);
+		}
+	}
+	/**
+	 * Checks if the current request should return previously-cached output. Returns FALSE if not, or the
+	 * TRUE if so.
+	 */
+	public final function cache_request() {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// Get the user's session ID.
+			$session = $this->CI->session->get_id();
+			// Get controller name.
+			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			// Check to see if a cached file exists.
+			if(file_exists(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache')) {
+				// When was it last modified?
+				if(filemtime(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache') + $this->CI->config->board->cache->duration > time()) {
+					// Modified not too long ago, return TRUE.
+					return TRUE;
+				} else {
+					// Modified ages ago. Return FALSE.
+					return FALSE;
+				}
+			} else {
+				// Not cached.
+				return FALSE;
+			}
+		} else {
+			// Caching isn't even enabled.
+			return FALSE;
+		}
+	}
+	/**
+	 * Returns the cached file for this request.
+	 */
+	public final function cache_retrieve() {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// Get the user's session ID.
+			$session = $this->CI->session->get_id();
+			// Get controller name.
+			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			// Return the cache file.
+			return file_get_contents(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache');
+		} else {
+			// Cache isn't enabled.
+			return "";
+		}
+	}
+	/**
+	 * Updates the filesystem cache stores for a users session ID. Called when their ID changes.
+	 *
+	 * @param string		$old		The users old session ID.
+	 * @param string		$new		The users new session ID.
+	 */
+	public final function cache_update($old, $new) {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// Does a folder exist for the old user?
+			if(file_exists(APPPATH . '/output/cache/' . $old . '/')) {
+				// Rename it.
+				rename(APPPATH . '/output/cache/' . $old . '/', APPPATH . '/output/cache/' . $new . '/');
+			}
+		}
+	}
+	/**
+	 * Clears the cache directories based on whether or not their assigned sessions exist.
+	 */
+	private final function cache_clear() {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// Get all of the sessions which still exist.
+			$sessions = array_diff(scandir(APPPATH . '/output/sessions/'), array('.', '..'));
+			// Get all of the session caches.
+			$caches = array_diff(scandir(APPPATH . '/output/cache/'), array('.', '..'));
+			// Go through cache dirs.
+			foreach($caches as $cache) {
+				// If there's no session for this cache...(Append .sess ext to cache name, bugfix).
+				if(in_array($cache . ".sess", $sessions) == FALSE) {
+					// Delete all the files inside of this dir, and then the dir itself.
+					$files = array_diff(scandir(APPPATH . '/output/cache/' . $cache . '/'), array('.', '..'));
+					foreach($files as $file) {
+						// Delete file (stupid limitation of rmdir is to NOT delete file -.-)
+						unlink(APPPATH . '/output/cache/' . $cache . '/' . $file);
+					}
+					// Remove dir.
+					rmdir(APPPATH . '/output/cache/' . $cache . '/');
+				}
+			}
+		}
+	}
+	/**
+	 * Makes the user's cache directory if needed.
+	 */
+	private final function cache_mkdir() {
+		// Page Cache enabled?
+		if($this->CI->config->board->cache->enabled == TRUE) {
+			// Does this user need a cache dir?
+			$session = $this->CI->session->get_id();
+			if(file_exists(APPPATH . '/output/cache/' . $session . '/') == FALSE) {
+				// Make one.
+				mkdir(APPPATH . '/output/cache/' . $session . '/');
+			}
+		}
 	}
 	/**
 	 * Creates a new cache store, which can then be used to cache data of a particular type. For example you

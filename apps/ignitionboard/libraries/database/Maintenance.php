@@ -18,9 +18,9 @@ class Database_Maintenance extends Database {
 	/**
 	 * Constructor
 	 */
-	public final function Database_Maintenance() {
+	public final function __construct() {
 		// Inherit the database.
-		parent::Database();
+		parent::__construct();
 	}
 	/**
 	 * Creates tables and places them in the forum database, after loading all the definitions.

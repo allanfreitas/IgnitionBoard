@@ -26,7 +26,7 @@ $hook['post_controller_constructor'] = array(
  */
 $hook['post_controller'] = array(
 	'class' => 'Post_Controller',
-	'function' => 'flush_session',
+	'function' => 'uninitialize_board',
 	'filename' => 'post_controller.php',
 	'filepath' => 'hooks'
 );

@@ -15,10 +15,12 @@ class Post_Controller {
 	 * Writes the user's session data to the database after the script has executed. Prevents excessive
 	 * writes to the database during execution.
 	 */
-	public final function flush_session() {
+	public final function uninitialize_board() {
 		// Get an instance of CI.
 		$this->CI =& get_instance();
 		// Call the flush() function in the session lib.
 		$this->CI->session->flush();
+		// Cache output.
+		$this->CI->cache->cache_output();
 	}
 }

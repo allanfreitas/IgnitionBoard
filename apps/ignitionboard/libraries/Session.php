@@ -1,7 +1,7 @@
 <?php if (! defined('BASEPATH')) exit('No direct script access allowed');
 /**
  * This Session lib fixes flaws inside of the CI Sessions library, in that the CI one stores all data
- * client side. We'll want the data to be stored using the database is possible, rather than client-side
+ * client side. We'll want the data to be stored using the file system rather than client-side
  * which can be tampered with potentially.
  *
  * @author Daniel Yates & Dale Emasiri
@@ -23,12 +23,17 @@ class CI_Session {
 	private $ttl = 3600;
 	/**
 	 * Rolls a random number between 1 and this variable. If it matches 1, we delete old sessions.
+	 * Why call it a divisor? Because the chance is 1/this :p
 	 */
 	private $divisor = 10;
 	/**
 	 * Stores the user's session data in an array. This is serialized for storage.
 	 */
-	private $session_data;	
+	private $session_data;
+	/**
+	 * Stores the keys/identifiers needed to validate that whoever accesses this session data next owns it.
+	 */
+	private $session_keys;	
 	/**
 	 * Stores the user's session data in MD5 format. Used to determine whether flushing is needed or not.
 	 */
@@ -36,11 +41,7 @@ class CI_Session {
 	/**
 	 * Stores the user's session key, and token identifer. This is read from the user's encrypted cookie.
 	 */
-	private $client_key_tokens;
-	/**
-	 * Stores the user's IP address and UA string. This is read from the request itself.
-	 */
-	private $client_key_source;
+	private $client_keys;
 	/**
 	 * Constructor.
 	 *
@@ -57,25 +58,20 @@ class CI_Session {
 	public final function initialize() {
 		// Set up some variables.
 		$this->now = time();
-		// Generic checksum of empty session array.
-		$this->session_checksum = md5('a:0:{}');
-		// Only access database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Should we wipe old sessions?
-			if(mt_rand(1, $this->divisor) == 1) {
-				// Delete old sessions.
-				$this->destroy_old_sessions();
-			}
-			// First up, check if the session exists in the database.
-			$this->initialize_session();
-			// Right, does the user own this session?
-			if($this->check_session_ownership()) {
-				// Update the session keys if needed.
-				$this->update_session_keys();
-			} else {
-				// Invalidate the session.
-				$this->destroy();
-			}
+		// Should we wipe old sessions?
+		if(mt_rand(1, $this->divisor) == 1) {
+			// Delete old sessions.
+			$this->destroy_old_sessions();
+		}
+		// First up, check if the session exists in the database.
+		$this->initialize_session();
+		// Right, does the user own this session?
+		if($this->check_session_ownership()) {
+			// Update the session keys if needed.
+			$this->update_session_keys();
+		} else {
+			// Invalidate the session.
+			$this->destroy();
 		}
 	}
 	/**
@@ -133,181 +129,153 @@ class CI_Session {
 		unset($this->session_data[$key]);
 	}
 	/**
-	 * Writes the user's session array into the database. Called once after controller execution, but
-	 * can be called as needed.
+	 * Writes the user's session data and keys into their session file. Called after controller execution
+	 * automatically.
 	 */
 	public final function flush($force_update = FALSE) {
-		// Only write to database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Update the session data.
-			$session = (string) serialize(($this->session_data == NULL) ? array() : $this->session_data);
-			// Only update if we actually NEED to, or if we're told to.
-			if(md5($session) != $this->session_checksum || $force_update == TRUE) {
-				// Overwrite the data in the database.
-				$this->CI->db->where('session_id', $this->client_key_tokens['session_id'])
-							 ->update('session', array('data' => $session));
-			}
+		// Update the session data.
+		$session = $this->parse_session_data();
+		// Only update if we actually NEED to, or if we're told to.
+		if(md5($session) != $this->session_checksum || $force_update == TRUE) {
+			// Write the session data to a file in "output/sessions/<session_id>.sess".
+			file_put_contents(APPPATH . '/output/sessions/' . $this->session_keys['session_id'] . '.sess', $session);
 		}
 	}
 	/**
 	 * Destroys the user's session, wiping their key and data.
 	 */
 	public final function destroy() {
-		// Destroy cookies and database session.
-		$this->destroy_database_session();
+		// Delete the user's session cookie.
 		delete_cookie('session');
-		// Unset the local stuff.
-		$this->session_data = array();
-		$this->client_key_tokens = array();
-		$this->client_key_source = array();
+		// Delete the user's session file.
+		$this->destroy_session_file();
 		// Make a new session.
 		$this->initialize_session(TRUE);
 	}
 	/**
-	 * Retrieves the user's session data from the database.
+	 * Returns the user's session ID.
 	 */
-	private final function get_session_data() {
-		// Only access database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Get the session data.
-			$session = $this->CI->db->select('data')
-									->from('session')
-									->where('session_id', $this->client_key_tokens['session_id']);
-			$session = $this->CI->db->get();
-			// Any results?
-			if($session->num_rows() > 0) {
-				// Got results. Done.
-				$session = $session->row_array();
-				// Do we have any data stored?
-				if($session['data'] == NULL) {
-					// Put in a blank array.
-					$this->session_data = array();
-					// Generic checksum of empty session array.
-					$this->session_checksum = md5('a:0:{}');
-				} else {
-					// Unserialize the data. MD5 it and set the checksum too.
-					$this->session_data = (array) unserialize($session['data']);
-					$this->session_checksum = md5($session['data']);
-				}
-			} else {
-				// Put in a blank array.
-				$this->session_data = array();
-				// Generic checksum of empty session array.
-				$this->session_checksum = md5('a:0:{}');
-			}
-		}
+	public final function get_id() {
+		// Return.
+		return $this->session_keys['session_id'];
 	}
 	/**
 	 * Checks to see if the user has a registered session, and if not it'll make one.
 	 */
 	private final function initialize_session($force_new = FALSE) {
-		// Sort out the keys based on the user's connection.
-		$this->client_key_source = array(
-			// User Agent string. Trimmed to 50 chars.
-			'user_agent' => substr($this->CI->input->user_agent(), 0, 50),
-			// IP address. Self-explanatory.
-			'ip_address' => $this->CI->input->ip_address(),
-		);
 		// Does this user have a session cookie?
 		if(get_cookie('session') == FALSE || $force_new == TRUE) {
 			// They don't. Shucks. Make a new set of keys.
 			$this->generate_client_keys();
-			// Update the user's database session entry.
-			$this->initialize_database_session();
 		} else {
 			// They do, sweet. Get the keys.
 			$this->retrieve_client_keys();
-			// Make sure the user has all the needed information.
-			if(array_key_exists("session_id", $this->client_key_tokens) == FALSE
-			|| array_key_exists("token", $this->client_key_tokens) == FALSE
-			|| array_key_exists("last_activity", $this->client_key_tokens) == FALSE) {
-				// Something is missing. Invalidate the session, and then re-initialize it.
-				$this->destroy();
-			} else {
-				// All data appears to be here. Make sure this user has a registered session in the database.
-				$this->initialize_database_session();
-			}
+		}
+		// Include the user's IP/UA in the keys.
+		$this->client_keys = array_merge(
+				$this->client_keys,
+				array(
+					// User-Agent string, clipped to 50 chars.
+					'user_agent' => substr($this->CI->input->user_agent(), 0, 50),
+					// IP address. Self-explanatory.
+					'ip_address' => $this->CI->input->ip_address(),
+				)
+			);
+		// Is anything missing from the session keys?
+		if(array_key_exists("session_id", $this->client_keys) == FALSE
+		|| array_key_exists("token", $this->client_keys) == FALSE
+		|| array_key_exists("last_activity", $this->client_keys) == FALSE) {
+			// Something is missing. Invalidate the session, and then re-initialize it.
+			$this->destroy();
+		}
+		// Right, has this session just been created, or did it expire a while ago?
+		if((integer) $this->client_keys['last_activity'] + $this->ttl < $this->now
+		|| $this->now == $this->client_keys['last_activity']) {
+			// It's either new or expired. Overwrite the user's session data file, anyways..
+			$this->generate_session_file();
+		}
+		// Get the user's session data.
+		$this->get_session_data();
+	}
+	/**
+	 * Retrieves the user's session data from the database.
+	 */
+	private final function get_session_data() {
+		// Get the user's session data.
+		$session = file_get_contents(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
+		// If it exists, unserialize it/update checksum.
+		if($session == FALSE) {
+			// But it doesn't.
+			// Put in a blank array.
+			$this->session_data = array();
+			$this->session_keys = array();
+			// Put in a blank checksum, should force a write.
+			$this->session_checksum = '';
+		} else {
+			// Oh, but it does!
+			$session_data = (array) unserialize($session);
+			$this->session_data = $session_data['data'];
+			$this->session_keys = $session_data['keys'];
+			$this->session_checksum = md5($session);
 		}
 	}
 	/**
-	 * Checks to see if the user's session is in the database. Doesn't update the data, only inserts a new
-	 * session record if needed.
+	 * Parses session data and returns either an unserialized set of arrays or a serialized string.
+	 *
+	 * @param string $session The serialized session data to parse.
 	 */
-	private final function initialize_database_session() {
-		// Only access database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Check the last_activity timer. Is it older than the time to live, or does it match now exactly?
-			if((integer) $this->client_key_tokens['last_activity'] + $this->ttl < $this->now
-			|| $this->now == $this->client_key_tokens['last_activity']) {
-				// Check to see if anything for this session already exists.
-				if($this->CI->db->where('session_id', $this->client_key_tokens['session_id'])->from('session')->count_all_results() == 0) {
-					// No results. Add in a new session record.
-					$session = new DB_Session();
-					// Set up data.
-					$session->import_from_array(array_merge($this->client_key_tokens, $this->client_key_source));
-					// Save it.
-					$session->save();
-				}
-			}
+	private final function parse_session_data($session = NULL) {
+		// Is the session arg null?
+		if($session == NULL) {
+			// We're serializing the session data then.
+			$session_data = array(
+				'keys' => &$this->session_keys,
+				'data' => &$this->session_data
+			);
+			// Return this array, serialized.
+			return (string) serialize($session_data);
+		} else {
+			// We've got a serialized string to parse.
+			$session_data = (array) unserialize($session);
+			// Return the arrays.
+			return $session_data;
 		}
 	}
 	/**
-	 * Destroys a database session based on the user's session ID.
+	 * Destroys the current user's session file.
 	 */
-	private final function destroy_database_session() {
-		// Only write to database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Delete this session.
-			$this->CI->db->where('session_id', $this->client_key_tokens['session_id'])
-						 ->delete('session');
+	private final function destroy_session_file() {
+		// Make sure a file exists with this name.
+		if(file_exists(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess')) {
+			// Delete it.
+			unlink(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
 		}
 	}
 	/**
 	 * Destroys sessions which are considered to be out of date/expired.
 	 */
 	private final function destroy_old_sessions() {
-		// Only write to database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Sessions older than time() - ttl are to be deleted.
-			$time = $this->now - $this->ttl;
-			// Delete.
-			$this->CI->db->where('last_activity <', $time)->delete('session');
+		// Get a list of all the files in the session output folder.
+		$files = array_diff(scandir(APPPATH . '/output/sessions/'), array(".", ".."));
+		foreach($files as $file) {
+			// Is the last-modified time of this file longer than the TTL?
+			if(filemtime(APPPATH . '/output/sessions/' . $file) + $this->ttl < $this->now) {
+				// Delete it.
+				unlink(APPPATH . '/output/sessions/' . $file);
+			}
 		}
 	}
 	/**
 	 * Checks to see if the user's session record identifiers match the ones given by the user.
 	 */
 	private final function check_session_ownership() {
-		// Only access database if we can.
-		if($this->CI->database->loaded == TRUE) {
-			// Only do this once every so often.
-			if($this->CI->security->revalidate($this->client_key_tokens['last_activity']) == TRUE) {
-				// Check the user's connection data with what the session has.
-				$server = $this->CI->db->select('ip_address, user_agent, last_activity')
-									   ->from('session')
-									   ->where('session_id', $this->client_key_tokens['session_id']);
-				$server = $this->CI->db->get();
-				// Any results?
-				if($server->num_rows() > 0) {
-					// Got results. Coo'.
-					$server = $server->row_array();
-					// Do these things match?
-					if(count(array_diff($this->client_key_source, $server)) > 0) {
-						// Mismatch! Oh dear. Bye bye!
-						return FALSE;
-					} else {
-						// All seems well in this world.
-						return TRUE;
-					}
-					return TRUE;
-				} else {
-					// No matches for this session ID.
-					return FALSE;
-				}
-			} else {
-				// Throttling says don't bother checking.
-				return TRUE;
-			}
+		// Any disparities with the client/server keys?
+		if(count(array_diff($this->client_keys, $this->session_keys)) > 0) {
+			// Mismatch! Oh dear. Bye bye!
+			return FALSE;
+		} else {
+			// All seems well in this world.
+			return TRUE;
 		}
 	}
 	/**
@@ -316,27 +284,45 @@ class CI_Session {
 	 */
 	private final function update_session_keys() {
 		// Get the user's last_activity string.
-		$last_update = $this->client_key_tokens['last_activity'];
+		$last_update = $this->client_keys['last_activity'];
 		// TIme to revalidate?
 		if($this->CI->security->revalidate($last_update) == TRUE) {
 			// It was ages ago. Alright. Update their keys, but store a copy of their current session ID.
-			$session_id = $this->client_key_tokens['session_id'];
+			$session_id = $this->client_keys['session_id'];
 			// Update.
 			$this->generate_client_keys();
-			// Only write to database if we can.
-			if($this->CI->database->loaded == TRUE) {
-				// Overwrite the data in the database.
-				$this->CI->db->where('session_id', $session_id)
-							 ->update('session', array_merge($this->client_key_tokens, $this->client_key_source));
-			}
+			// Update their session keys.
+			$this->session_keys['session_id'] = $this->client_keys['session_id'];
+			$this->session_keys['token'] = $this->client_keys['token'];
+			$this->session_keys['last_activity'] = $this->client_keys['last_activity'];
+			// Rename the old session file they had.
+			rename(APPPATH . '/output/sessions/' . $session_id . '.sess', APPPATH . '/output/sessions/' . $this->get_id() . '.sess');
+			// Update their cache stores.
+			$this->CI->cache->cache_update($session_id, $this->get_id());
 		}
+	}
+	/**
+	 * Creates a new server-side session file/array/whatever.
+	 */
+	private final function generate_session_file() {
+		// Sort out user session keys.
+		$this->session_data = array();
+		$this->session_keys = array();
+		$this->session_checksum = '';
+		$this->session_keys['session_id'] = $this->client_keys['session_id'];
+		$this->session_keys['token'] = $this->client_keys['token'];
+		$this->session_keys['last_activity'] = $this->client_keys['last_activity'];
+		$this->session_keys['user_agent'] = $this->client_keys['user_agent'];
+		$this->session_keys['ip_address'] = $this->client_keys['ip_address'];
+		// Force-write data to file.
+		$this->flush(TRUE);
 	}
 	/**
 	 * Generates a new set of client-keys and sends them to the user in an encrypted cookie.
 	 */
 	private final function generate_client_keys() {
 		// Make up some awesome data.
-		$this->client_key_tokens = array(
+		$this->client_keys = array(
 			// Session Identifer. Random + IP, hashed.
 			'session_id' => hash('ripemd160',$this->CI->security->generate_string() . $this->CI->input->ip_address()),
 			// Uniquely generated token. This remains constant throughout the user's visit.
@@ -345,14 +331,14 @@ class CI_Session {
 			'last_activity' => $this->now
 		);
 		// Give this set of keys to the user. Make it a session cookie (expiry = 0)
-		set_cookie('session', $this->CI->encrypt->encode(serialize($this->client_key_tokens)), 0);
+		set_cookie('session', $this->CI->encrypt->encode(serialize($this->client_keys)), 0);
 	}
 	/**
 	 * Gets the user's keys from their cookie.
 	 */
 	private final function retrieve_client_keys() {
-		// The cookie represents the user's key, so decrypt and unserialize it.
-		$this->client_key_tokens = (array) unserialize($this->CI->encrypt->decode(get_cookie('session')));
+		// The cookie represents the user's public keys, so decrypt and unserialize it.
+		$this->client_keys = (array) unserialize($this->CI->encrypt->decode(get_cookie('session')));
 	}
 }
 /* End of file session.php */

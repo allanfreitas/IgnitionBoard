@@ -25,7 +25,7 @@ class Database {
 	 *
 	 * Loads the child classes and sorts out the CI instance.
 	 */
-	public function Database() {
+	public function __construct() {
 		// Sort out the CI reference.
 		$this->CI =& get_instance();
 		// Initialize if we should. Prevents us recursively loading child components (stupid thing).

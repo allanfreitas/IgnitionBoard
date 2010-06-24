@@ -21,22 +21,35 @@ class Post_Controller_Constructor {
 		$this->CI =& get_instance();
 		// Load components (phase 1)
 		$this->_load_components(1);
-		// Initialise the configuration.
+		// Initialize the configuration.
 		$this->CI->config->initialize();
 		// Enable profiler?
 		$this->CI->output->enable_profiler($this->CI->config->board->core->profiler);
-		// Initialise the session.
+		// Initialize the cache.
+		$this->CI->cache->initialize();
+		// Initialize the session.
 		$this->CI->session->initialize();
-		// Set the view path so that it's in the public templates directory.
-		$this->CI->load->_ci_view_path = $this->CI->config->paths->server->themes;
-		// Check if the board isn't installed, and that we're NOT in the install dir.
-//		if($this->CI->config->board->core->installed == FALSE && $this->CI->uri->segment(1) != "install") {
-//			// Not installed, redirect to /install.
-//			redirect('/install');
-//		} else {
-			// Load components (phase 2)
-			$this->_load_components(2);
-//		}
+		// Is there a cache file we can return?
+		if($this->CI->cache->cache_request() == FALSE) {
+			// No cache.
+			// // Set the view path so that it's in the public templates directory.
+			$this->CI->load->_ci_view_path = $this->CI->config->paths->server->themes;
+			// Check if the board isn't installed, and that we're NOT in the install dir.
+	//		if($this->CI->config->board->core->installed == FALSE && $this->CI->uri->segment(1) != "install") {
+	//			// Not installed, redirect to /install.
+	//			redirect('/install');
+	//		} else {
+				// Load components (phase 2)
+				$this->_load_components(2);
+	//		}
+		} else {
+			// We can! Coolio.
+			$this->CI->output->set_output($this->CI->cache->cache_retrieve());
+			// Send output.
+			$this->CI->output->_display();
+			// Kill script.
+			exit;
+		}
 	}
 	/**
 	 * Loads components based on the loading phase given. Phase 1 is base (core) components needed for

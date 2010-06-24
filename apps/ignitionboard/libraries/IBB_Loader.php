@@ -16,7 +16,7 @@ class IBB_Loader extends CI_Loader {
 	 *
 	 * Sets up CI instance here.
 	 */
-	public function IBB_Loader() {
+	public function __construct() {
 		// Fire parent constructor.
 		parent::CI_Loader();
 		// Set it up.

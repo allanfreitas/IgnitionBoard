@@ -19,6 +19,9 @@
 | -------------------------------------------------------------------
 |	--- CORE ---
 |	['core']['installed'] 	Whether or not the board is considered installed.
+|	--- CACHE ---
+|	['cache']['enabled'] 	Whether or not to enable page caching. Improves performance drastically.
+|	['cache']['duration'] 	Duration of the cache in seconds. Default: 60.
 |	--- TEXT ---
 |	['text']['title'] 		The title of the forum.
 |	--- THEMES ---
@@ -31,9 +34,12 @@
 */
 	// CORE
 	$board['core']['installed'] 	= FALSE;
-	$board['core']['profiler']		= FALSE;
+	$board['core']['profiler']		= TRUE;
+	// CACHE
+	$board['cache']['enabled']		= FALSE;
+	$board['cache']['duration']		= 60;
 	// TEXT
-	$board['text']['title'] 		= "IgniteBB";
+	$board['text']['title'] 		= "IgnitionBoard";
 	// THEMES
 	$board['themes']['name'] 		= "Ignited";
 	$board['themes']['url'] 		=  "ignited/";

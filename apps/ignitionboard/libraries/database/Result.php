@@ -13,9 +13,9 @@ class Database_Result extends Database {
 	/**
 	 * Constructor
 	 */
-	public function Database_Result() {
+	public function __construct() {
 		// Inherit the database.
-		parent::Database();
+		parent::__construct();
 	}
 }
 /* End of file database.php */
