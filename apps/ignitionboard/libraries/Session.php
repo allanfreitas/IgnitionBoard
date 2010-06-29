@@ -201,8 +201,8 @@ class CI_Session {
 	 * Retrieves the user's session data from the database.
 	 */
 	private final function get_session_data() {
-		// Get the user's session data.
-		$session = file_get_contents(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
+		// Get the user's session data. Does a session with this ID exist?
+		$session = @file_get_contents(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
 		// If it exists, unserialize it/update checksum.
 		if($session == FALSE) {
 			// But it doesn't.
@@ -331,14 +331,14 @@ class CI_Session {
 			'last_activity' => $this->now
 		);
 		// Give this set of keys to the user. Make it a session cookie (expiry = 0)
-		set_cookie('session', $this->CI->encrypt->encode(serialize($this->client_keys)), 0);
+		set_cookie('session', serialize($this->client_keys), 0);
 	}
 	/**
 	 * Gets the user's keys from their cookie.
 	 */
 	private final function retrieve_client_keys() {
 		// The cookie represents the user's public keys, so decrypt and unserialize it.
-		$this->client_keys = (array) unserialize($this->CI->encrypt->decode(get_cookie('session')));
+		$this->client_keys = (array) unserialize(get_cookie('session'));
 	}
 }
 /* End of file session.php */

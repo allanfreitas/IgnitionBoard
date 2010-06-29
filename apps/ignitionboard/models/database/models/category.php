@@ -19,6 +19,7 @@ class DB_Category extends DB_Model_Abstract {
 		self::set_table_name('category');
 		// Set up table relations.
 		self::has_relation('parent_id', 'id', 'category');
+		self::has_relation('id', 'category_id', 'board', TRUE);
 	}
 }
 

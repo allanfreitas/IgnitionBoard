@@ -31,7 +31,7 @@ abstract class DB_Model_Abstract {
 	/**
 	 * Stores a reference to the table that this model belongs to.
 	 */
-	public $table;
+	private $table;
 	/**
 	 * Constructor.
 	 *
@@ -59,6 +59,8 @@ abstract class DB_Model_Abstract {
 		if($this->id == NULL) {
 			// Insert.
 			self::$CI->db->insert($this->table['name'][0], $this->data);
+			// Update the local id.
+			$this->id = self::$CI->db->insert_id();
 		} else {
 			// Update if row exists.
 			if(self::$CI->db->where($this->table['id'], $this->id)->from($this->table['name'][0])->count_all_results() > 0) {
@@ -67,7 +69,72 @@ abstract class DB_Model_Abstract {
 			} else {
 				// Not found, insert.
 				self::$CI->db->insert($this->table['name'][0], $this->data);
+				// Update the local id.
+				$this->id = self::$CI->db->insert_id();
 			}
+		}
+	}
+	/**
+	 * Retrieves data from the database and stores it in this model, by way of a SELECT query.
+	 * This is accessed by the __call() method, as we reroute non-existant method calls and parse them into
+	 * a get() call.
+	 *
+	 * @param string $field The name of the field to get.
+	 * @param string $clause The data to check for in the field.
+	 * @param int    $limit The amount of records to fetch, maximum.
+	 * @param bool   $fetch_relatives Whether to load relatives too, when parsing data.
+	 */
+	protected function get($field, $clause = '', $limit = 1) {
+		// 1 record, easy peasy. Get the table data.
+		self::$CI->db->select('*')
+					 ->from($this->table['name'][0])
+					 ->where($field, $clause);
+
+		// Apply a limit?
+		if($limit > 0)
+			self::$CI->db->limit($limit);
+		$query = self::$CI->db->get();
+		if($query->num_rows() > 0) {
+			// We got a result. Go! Do a small hackerydoodle here :P
+			// Check how many records the user wants. If it's 0, we're returning the one object. If it's more...
+			// Then we have fun issues.
+			if($query->num_rows() == 1) {
+				// Only want 1 result, so slam the single row array into import_from_array(). That's the hack.
+				$this->import_from_array($query->row_array());
+			} else {
+				// Want more than 1, pass all results to it.
+				$this->import_from_array($query->result_array());
+			}
+		} else {
+			// No result. Bugger. Put in a NULL value for all fields.
+			foreach(array_keys($this->table['fields']) as $field) {
+				$this->{$field} = NULL;
+			}
+		}
+	}
+	/**
+	 * Gets a new instance of another database model based on the relationship the given field has.
+	 * So say a user model was related to the telephone model by the telephone field, accessing the telephone
+	 * field would link to this new instance we're making.
+	 *
+	 * @todo Consider intermediary (autoloader) for relatives, so we only populate on access.
+	 * @param string $field The name of the field with the relationship.
+	 * @param string $data The data that this field contains, used as the clause in the get() call.
+	 */
+	protected function get_relative($field, $data) {
+		// Get relation data.
+		$relation =& $this->table['relations'][$field];
+		// Only do this if this relation is NOT a parent->child one. Prevents recursive loops.
+		if($relation['parent'] == FALSE) {
+			// Parse the name of the table into a model name. Strip prefix, prepend DB_
+			$model_name = "DB_" . ucfirst(str_replace(self::$CI->db->dbprefix, '', $relation['foreign_table']));
+			// Make a new instance of the model we're linking to.
+			$model = new DB_Model_Delegate($model_name, "get_by_" . $relation['foreign'], $data);
+			// Return the model.
+			return $model;
+		} else {
+			// Return the data.
+			return $data;
 		}
 	}
 	/**
@@ -81,14 +148,109 @@ abstract class DB_Model_Abstract {
 	 * Takes a given array and sets up the object with the present data.
 	 */
 	public function import_from_array($array) {
-		// Go through the array.
-		foreach($array as $field => $data) {
-			// If we have a field with this name, set the value.
-			if(array_key_exists($field, $this->table['fields']) == TRUE) {
-				// Set it.
-				$this->{$field} = $data;
+		// Is this a multilevel array?
+		if(count($array) == count($array, COUNT_RECURSIVE)) {
+			// It's single leve. Go through the array.
+			foreach($array as $field => $data) {
+				// If we have a field with this name, set the value.
+				if(array_key_exists($field, $this->table['fields']) == TRUE) {
+					// Is this field involved in a (romantic) relationship?
+					if(array_key_exists($field, $this->table['relations'])) {
+						// Edit the $data variable so that it contains a link to a model in the other table.
+						$data = $this->get_relative($field, $data);
+					}
+					// Set it.
+					$this->{$field} = $data;
+				}
+			}
+		} else {
+			// Multidimensonal. Go through each level and the fields in these levels.
+			foreach($array as $level => $fields) {
+				foreach($fields as $field => $data) {
+					// If we have a field with this name, set the value.
+					if(array_key_exists($field, $this->table['fields']) == TRUE) {
+						// Is this field involved in a (romantic) relationship?
+						if(array_key_exists($field, $this->table['relations'])) {
+							// Edit the $data variable so that it contains a link to a model in the other table.
+							$data = $this->get_relative($field, $data);
+						}
+						// Set it. Weird bugfix: Directly access the data array.
+						$this->data[$field][$level] = $data;
+					}
+				}
 			}
 		}
+	}
+	/**
+	 * Called automatically when a function which doesn't exist is called. This is where the ORM stuff
+	 * comes to life, we reroute valid functions like get_by_<field>() to the get() function with a fair
+	 * few amount of parameters.
+	 *
+	 * @param string $name The name of the function that was called.
+	 * @param array $arguments The arguments passed to this function.
+	 */
+	public function __call($name, $arguments) {
+		// First up make sure the function call is valid. It'll have a get_by_<field> name, so regex match.
+		$matches = array();
+		$fields = self::$CI->cache->get('model_fields_' . $this->table['name'][0], 'functions', array(&$this, "_create_regex_fields"), TRUE);
+		$regex = preg_match_all("/(get_by_)(id|" . $fields . ")/is", $name, $matches);
+		if(count($matches[0]) > 0) {
+			// It matches. Parse the field name.
+			$field = $matches[2][0]; // Field name is second pattern, first result. Index 0 = full string.
+			// If the field is "id", link it to the correct ID field.
+			if($field == "id")
+				$field = $this->table['id'];
+			// Validate our arguments.
+			$clause = count($arguments) > 0 ? $arguments[0] : '';
+			$limit = count($arguments) > 1 ? $arguments[1] : -1;
+			// Next...Err...Skip ahead to get().
+			return $this->get($field, $clause, $limit);
+		} else {
+			// Could be trying to do a get_child_<field>s() call?
+			if(strpos($name, "get_child_") > -1) {
+				// Give it a crack.
+				$model_name = "DB_" . ucfirst(substr(str_replace("get_child_", "", $name), 0, -1));
+				// Does it exist?
+				if(class_exists($model_name)) {
+					// Work out what field is the relative between the two.
+					$model_relation = NULL;
+					foreach($this->table['relations'] as $field => $relation) {
+						// Does this relation's foreign table match the other one?
+						if("DB_" . ucfirst(str_replace(self::$CI->db->dbprefix, '', $relation['foreign_table'])) == $model_name) {
+							// Match found.
+							$model_relation =& $relation;
+							break;
+						}
+					}
+					// Good. Kick some booty!
+					$model = new $model_name();
+					// Get the stuff bro!
+					$function = "get_by_" . $model_relation['foreign'];
+					$model->{$function}($this->{$model_relation['local']});
+					return $model;
+				} else {
+					// Failure.
+					return FALSE;
+				}
+			} else {
+				// Failure.
+				return FALSE;
+			}
+		}
+	}
+	/**
+	 * Converts the field names into a regex parsable condition string.
+	 */
+	public function _create_regex_fields() {
+		// Go!
+		$fields = "";
+		foreach(array_keys($this->table['fields']) as $name) {
+			$fields .= $name . "|";
+		}
+		// Cut off the last pipe.
+		$fields = substr($fields, 0, -1);
+		// Done.
+		return $fields;
 	}
 	/**
 	 * Called automatically when data is set to an inaccessible property.
@@ -101,7 +263,11 @@ abstract class DB_Model_Abstract {
 		// Does this field name exist?
 		if(array_key_exists($name, $this->data)) {
 			// Set it.
-			$this->data[$name] = $this->_call_set_mutator($name, $value);
+			if($value != NULL) {
+				$this->data[$name] = $this->_call_set_mutator($name, $value);
+			} else {
+				$this->data[$name] = $value;
+			}
 		} else {
 			// Error out.
 			self::$CI->error->show("database_field_not_found", array(
@@ -172,6 +338,7 @@ abstract class DB_Model_Abstract {
 	/**
 	 * Calls any assigned 'mutators' (functions which alter data) on this field.
 	 * This is the GET variant, so calls a mutator which alters data as it's being retrieved.
+	 * Also known as an accessor. Had a brain failure when thinking this up.
 	 *
 	 * @param string $name The field name to access.
 	 * @param string $value The value to set in this field.
@@ -337,10 +504,12 @@ abstract class DB_Model_Abstract {
 	 * @param string $local			The name of the foreign key, eg. "category_id". Located in THIS table.
 	 * @param string $foreign		The name of the primary key. Often "id", located in ANOTHER table.
 	 * @param string $foreign_table	The name of the table housing the primary key.
+	 * @param bool	 $parent		If TRUE, this will prevent the CRUD functions looping infinitely by
+	 *								defining this table as a parent of the related table.
 	 * @param string $cascade		If set to NONE, UPDATE or DELETE then the cascading will be set to that.
 	 *								Defaults to ALL (update/deletes cascade).
 	 */
-	protected static final function has_relation($local, $foreign, $foreign_table, $cascade_type = "ALL") {
+	protected static final function has_relation($local, $foreign, $foreign_table, $parent = FALSE, $cascade_type = "ALL") {
 		// Only continue if we've got a UID. Prevents possible 'issues'.
 		if(self::$UID != NULL) {
 			// Continue. We're putting this relation into self::$CI->database->maintenance->tables[UID]['relations'];
@@ -351,6 +520,7 @@ abstract class DB_Model_Abstract {
 				'local' => $local,
 				'foreign' => $foreign,
 				'foreign_table' => self::$CI->db->dbprefix . $foreign_table,
+				'parent' => $parent,
 				'cascade' => $cascade_type
 			);
 			// Done.
@@ -400,6 +570,134 @@ abstract class DB_Model_Abstract {
 			// Put this into the registry.
 			self::$CI->database->maintenance->tables[self::$UID]['identifier'] = $status;
 		}
+	}
+}
+/**
+ * Acts as an intermediary between models and other models. Helps performance a bit.
+ * Allows us to load model on demand, rather than loading things we might never need.
+ */
+class DB_Model_Delegate {
+	/**
+	 * Stores the name of the model this delegate works for.
+	 */
+	protected $_delegate_name = NULL;
+	/**
+	 * Stores the loaded model inside of this delegate.
+	 */
+	protected $_delegate_model = NULL;
+	/**
+	 * Stores the name of a function to call when this model is initialized.
+	 */
+	protected $_delegate_callback = NULL;
+	/**
+	 * Stores the arguments to pass to this function
+	 */
+	protected $_delegate_arguments = NULL;
+	/**
+	 * Constructor
+	 *
+	 * Sets up the delegate class.
+	 *
+	 * @param string $name Name of the model to load.
+	 */
+	public function __construct($name, $function = NULL, $args = NULL) {
+		// Set properties.
+		$this->_delegate_name = $name;
+		$this->_delegate_callback = $function;
+		$this->_delegate_arguments = $args;
+	}
+	/**
+	 * Initializes the assigned model and fires any callbacks. Only happens once.
+	 */
+	public final function initialize_model() {
+		// How's the model faring?
+		if($this->_delegate_model == NULL) {
+			// Oh dear oh dear. Load it.
+			$name = $this->_delegate_name;
+			// Go.
+			$this->_delegate_model = new $name();
+			// Callback?
+			if($this->_delegate_callback != NULL) {
+				$this->_delegate_model->{$this->_delegate_callback}($this->_delegate_arguments);
+			}
+		}
+	}
+	/**
+	 * -------------------------------------------------------------------------------------------------------
+	 * PROPERTY OVERLOADS
+	 * -------------------------------------------------------------------------------------------------------	 *
+	 */
+	/**
+	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
+	 * the property is passed to this function.
+	 * From here we check if the model needs loading, fire callbacks and then pass the property name on.
+	 *
+	 * @param string The name of the property to access.
+	 */
+	public function __get($name) {
+		// Check initialization state.
+		$this->initialize_model();
+		// Pass the call on.
+		return $this->_delegate_model->$name;
+	}
+	/**
+	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
+	 * the property is passed to this function.
+	 * From here we check if the model needs loading, fire callbacks and then pass the property name and
+	 * value on.
+	 *
+	 * @param string The name of the property to access.
+	 * @param string The value to set.
+	 */
+	public function __set($name, $value) {
+		// Check initialization state.
+		$this->initialize_model();
+		// Pass the call on.
+		$this->_delegate_model->$name = $value;
+	}
+	/**
+	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
+	 * the property is passed to this function.
+	 * From here we check if the model needs loading, fire callbacks and then check the value ourselves.
+	 *
+	 * @param string The name of the property to access.
+	 */
+	public function __isset($name) {
+		// Check initialization state.
+		$this->initialize_model();
+		// Pass the call on.
+		return isset($this->_delegate_model->$name);
+	}
+	/**
+	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
+	 * the property is passed to this function.
+	 * From here we check if the model needs loading, fire callbacks and then unset the property.
+	 *
+	 * @param string The name of the property to access.
+	 */
+	public function __unset($name) {
+		// Check initialization state.
+		$this->initialize_model();
+		// Pass the call on.
+		unset($this->_delegate_model->$name);
+	}
+	/**
+	 * -------------------------------------------------------------------------------------------------------
+	 * FUNCTION OVERLOADS
+	 * -------------------------------------------------------------------------------------------------------
+	 */
+	/**
+	 * Handles more intermediary stuff. If a function of the assigned model is accessed, the name of the
+	 * function is passed on to the model itself after we load it.
+	 *
+	 * @param string $name The name of the function to call.
+	 * @param $arguments
+	 */
+	public function  __call($name, $arguments) {
+		// Check initialization state.
+		$this->initialize_model();
+		// Pass call on.
+		return call_user_func_array(array(&$this->_delegate_model, $name), $arguments);
 	}
 }
 /* End of file db_table.php */

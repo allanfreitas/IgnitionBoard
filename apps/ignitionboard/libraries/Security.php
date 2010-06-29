@@ -36,7 +36,7 @@ class Security {
 	 * @param	bool	$allow_symbols	If TRUE, allow symbols to be added into the mix.
 	 * @return	string	The randomly generated string.
 	 */
-	public function generate_string($max_length = 32, $allow_symbols = TRUE) {
+	public final function generate_string($max_length = 32, $allow_symbols = TRUE) {
 		// Store possible characters.
 		$chars = "abcdefghijklmnopqrstuvwxyz0123456789";
 		// Allowing symbols?
@@ -75,7 +75,7 @@ class Security {
 	 * @param	string	$sess_prefix	The key of the challenge string in the session data.
 	 * @return	string	The challenge string that comes out of this generator's womb. Sort of.
 	 */
-	function generate_challenge($sess_prefix) {
+	public final function generate_challenge($sess_prefix) {
 		// Only generate a new challenge if one doesn't exist with this name. Fixes a bug with Chrome.
 		if($this->CI->session->get($sess_prefix . '_challenge') == FALSE) {
 			// Make a stwing!
@@ -96,7 +96,7 @@ class Security {
 	 * @param	string	$sess_prefix	The key of the challenge string in the session data.
 	 * @return	bool	Whether or not the challenge data matched up.
 	 */
-	function check_challenge($post_key, $sess_prefix) {
+	public final function check_challenge($post_key, $sess_prefix) {
 		// Do something AWESOME. Like...Get the super-duper challenge string from the session! If we can.
 		$challenge = $this->CI->session->get($sess_prefix . '_challenge');
 		// Did it exist? Really?
@@ -120,7 +120,7 @@ class Security {
 	 *
 	 * @param	string	$sess_prefix	The key of the challenge string in the session data.
 	 */
-	function unset_challenge($sess_prefix) {
+	public final function unset_challenge($sess_prefix) {
 		// Remove it bro!
 		$this->CI->session->remove($sess_prefix . '_challenge');
 	}
@@ -130,7 +130,7 @@ class Security {
 	 * @param	string	$sess_prefix	The key of the challenge string in the session data.
 	 * @return	string	The challenge string that comes out of this generator's womb. Sort of.
 	 */
-	function regenerate_challenge($sess_prefix) {
+	public final function regenerate_challenge($sess_prefix) {
 		// Kill old one.
 		$this->unset_challenge($sess_prefix);
 		// Return new one.
@@ -142,133 +142,12 @@ class Security {
 	 *
 	 * @param	int		$time			The time to compare the TTR to.
 	 */
-	function revalidate($time) {
+	public final function revalidate($time) {
 		// If the time + time to revalidate are < the current time, revalidate is TRUE.
 		if($time + $this->ttr < $this->now) {
 			return TRUE;
 		} else {
 			return FALSE;
-		}
-	}
-	/**
-	 * Takes an input and returns a salted version, suitable for storing as a password. The salt is a 
-	 * combination of a static and variable salt. The static salt is determined by the database AND by
-	 * part stored in a file. The variable salt is based on the value given.
-	 *
-	 * @param	string	$value			The value to salt.
-	 * @param	string	$variable_salt	A piece of variable user data to aid in creating the salted password.
-	 * @return	string	The salted password.
-	 */
-	function encrypt_password($value, $variable_salt) {
-		// Get the salt. Key fragment #1 is in the database.
-		$key[0] = $this->CI->config->cryptography->salt->remote;
-		// Key fragment #2 is in the config files.
-		$key[1] = $this->CI->config->cryptography->salt->local;
-		// Make sure we've a key fragment.
-		if($key[1] == "" || $key[0] = "") {
-			// Error out.
-			$this->CI->error->show('security_missing_salt');
-		}
-		// Combine the two. Salt formed.
-		$salt[0][0] = hash('ripemd160', $key[0] . $key[1]);
-		// Split that hash in half. Prepend the second half, append the second half.
-		$salt[0][1] = substr($salt[0][0], 0, 20);
-		$salt[0][2] = substr($salt[0][0], 20);
-		// Now for our variable salt. We want the length of the value * 2.2. Ceil that value.
-		// If the length of our value is more than 36, trim it to be 36.
-		if(strlen($variable_salt) > 36) { $variable_salt = substr($variable_salt, 0, 36); }
-		// Calculate it.
-		$salt[1][0] = ceil(strlen($variable_salt) * 2.2);
-		// Take the calculation and SHA1 it, along with the first 12 characters of the variable salt appended
-		// to the end.
-		$salt[1][1] = sha1($salt[1][0] . substr($variable_salt, 0, 12));
-		// Put ths static salt on the value. Second half prepend, first half append.
-		$result = $salt[0][2] . $value . $salt[0][1];
-		// Put our variable salt in the position calculated.
-		$result = (substr($result, 0, -$salt[1][0]) . $salt[1][1] . substr($result, -$salt[1][0]));
-		// Done.
-		return $result;
-	}
-	/**
-	 * Decodes a string created with the salt() function.
-	 *
-	 * @param	string	$value			The value to de-salt.
-	 * @param	string	$variable_salt	A piece of variable user data to aid in decoding the salted password.
-	 * @return	string	The unsalted password.
-	 */
-	function decrypt_password($value, $variable_salt) {
-		// Check the value length.
-		if(strlen($value) < 120) {
-			// Error out.
-			$this->CI->error->show('security_password_length');
-		}
-		// We only need the second salt value.
-		// Key fragment #2 is in the config files.
-		$key[1] = $this->CI->config->cryptography->salt->local;
-		// Make sure we've a key fragment.
-		if($key[1] == "") {
-			// Error out.
-			$this->CI->error->show('security_missing_salt');
-		}
-		// Now for our variable salt. We want the length of the value * 2.2. Ceil that value.
-		// If the length of our value is more than 36, trim it to be 36.
-		if(strlen($variable_salt) > 36) { $variable_salt = substr($variable_salt, 0, 36); }
-		// Calculate it.
-		$salt[1][0] = ceil(strlen($variable_salt) * 2.2);
-		// Take the calculation and SHA1 it, along with the first 12 characters of the variable salt appended
-		// to the end.
-		$salt[1][1] = sha1($salt[1][0] . substr($variable_salt, 0, 12));
-		// Remove the variable salt at the calculated position. It's 40 characters long by design.
-		$result = substr_replace($value, "", - $salt[1][0] - 40, 40);
-		// Remove the static salt on the value.
-		$result = substr($result, 20, 40);
-		// Done.
-		return $result;
-	}
-	/**
-	 * Generates a new static salt keypair. Any user credentials will become inaccessible after using this, as
-	 * the salt key would have changed. This is only called on install, and should never ever ever ever ever
-	 * be called afterwards.
-	 */
-	function generate_salt_keypair() {
-		// I guess the user is insane. Okies, let's do this. Make a new salt keypair. 20 char limit each.
-		$key[0] = $this->generate_string(20); // This part is going into the database.
-		$key[1] = $this->generate_string(20); // This part is going into a file.
-		// Make a new row.
-		$row = array(
-			'setting' => 'remote',
-			'value' => $key[0],
-			'category' => 'cryptography',
-			'subcategory' => 'salt'
-		);
-		// Put it into the config table. Half done.
-		$this->CI->db->insert('config', $row);
-		// Write the next half into the cryptography settings file.
-		$file = <<<EOF
-<?php if (! defined('BASEPATH')) exit('No direct script access allowed');
-/*
-| -------------------------------------------------------------------
-| CRYPTOGRAPHY SETTINGS
-| -------------------------------------------------------------------
-| This file contains important keys used in encrypting and securing your forum data.
-|
-| -------------------------------------------------------------------
-| EXPLANATION OF VARIABLES
-| -------------------------------------------------------------------
-|	--- HASH ---
-|	['salt']['local'] 	Half of the salt used in hashing passwords.
-|
-*/
-	// HASH
-	\$cryptography['salt']['local'] = '$key[1]';
-EOF;
-		// Write this file.
-		if(is_writeable(APPPATH . 'config/settings/cryptography.php')) {
-			// Write!
-			file_put_contents(APPPATH . 'config/settings/cryptography.php', $file);
-		} else {
-			// Uh-oh. Error.
-			$this->CI->error->show('security_file_not_writeable');
 		}
 	}
 }

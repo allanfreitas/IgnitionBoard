@@ -74,7 +74,7 @@ class Authentication {
 				break;
 			case 'cookie':
 				// Populate with COOKIE data.
-				$this->user->login->email = $this->CI->encrypt->decode(get_cookie('auth_remember', TRUE));
+				$this->user->login->email = get_cookie('auth_remember', TRUE);
 				$this->user->login->password = '';
 				$this->user->login->challenge = '';
 				$this->user->login->remember = '1';
@@ -206,7 +206,7 @@ class Authentication {
 		// Remember this user?
 		if($this->user->login->remember == '1') {
 			// Set the remember cookie. Expires in a year.
-			set_cookie('auth_remember', $this->CI->encrypt->encode($this->user->login->email), 31536000);
+			set_cookie('auth_remember', $this->user->login->email, 31536000);
 		}
 		// return true, user logged in.
 		return TRUE;

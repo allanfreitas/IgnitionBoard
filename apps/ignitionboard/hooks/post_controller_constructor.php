@@ -32,16 +32,16 @@ class Post_Controller_Constructor {
 		// Is there a cache file we can return?
 		if($this->CI->cache->cache_request() == FALSE) {
 			// No cache.
-			// // Set the view path so that it's in the public templates directory.
+			// Set the view path so that it's in the public templates directory.
 			$this->CI->load->_ci_view_path = $this->CI->config->paths->server->themes;
 			// Check if the board isn't installed, and that we're NOT in the install dir.
-	//		if($this->CI->config->board->core->installed == FALSE && $this->CI->uri->segment(1) != "install") {
-	//			// Not installed, redirect to /install.
-	//			redirect('/install');
-	//		} else {
+			if($this->CI->config->board->core->installed == FALSE && $this->CI->uri->segment(1) != "install") {
+				// Not installed, redirect to /install.
+				//redirect('/install');
+			} else {
 				// Load components (phase 2)
 				$this->_load_components(2);
-	//		}
+			}
 		} else {
 			// We can! Coolio.
 			$this->CI->output->set_output($this->CI->cache->cache_retrieve());
@@ -68,7 +68,6 @@ class Post_Controller_Constructor {
 				$this->CI->load->add_library('error');
 				$this->CI->load->add_library('cache');
 				$this->CI->load->add_library('database');
-				$this->CI->load->add_library('encrypt');
 				$this->CI->load->add_library('security');
 				$this->CI->load->add_library('session');
 				// Define BASE_URL as a constant here too.

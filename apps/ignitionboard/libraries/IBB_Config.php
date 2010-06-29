@@ -47,18 +47,12 @@ class IBB_Config extends CI_Config {
 	 * Slow method, only used if needed.
 	 */
 	private final function _init_defaults() {
-		// We need to ALWAYS load the cryptography file regardless of installation state.
-		require APPPATH . '/config/settings/cryptography.php';
-		// Convert to properties.
-		$this->cryptography = new ConfigObject($cryptography);
 		// Load the config files.
 		require APPPATH . '/config/settings/paths.php';
 		require APPPATH . '/config/settings/board.php';
-		require APPPATH . '/config/settings/user.php';
 		// Translate arrays into properties. Set the resultant to their respective properties.
 		$this->paths = new ConfigObject($paths);
 		$this->board = new ConfigObject($board);
-		$this->user = new ConfigObject($user);
 	}
 }
 /**
