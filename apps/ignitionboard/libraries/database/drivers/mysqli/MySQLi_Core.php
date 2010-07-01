@@ -18,6 +18,8 @@ class MySQLi_Core implements Database_Driver {
 	protected $name = NULL;
 	/**
 	 * Stores a reference to our connections' configuration.
+	 * This prevents normal quick access to the config library, so instead use $this->ci_config to access
+	 * said library.
 	 */
 	protected $config = NULL;
 	/**
