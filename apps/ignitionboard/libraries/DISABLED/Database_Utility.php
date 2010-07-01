@@ -1,15 +1,20 @@
 <?php if (! defined('BASEPATH')) exit('No direct script access allowed');
 /**
- * The Database library manages the loading of records and other critical functions.
+ * The Database utility library contains utility functions for the database, like table creation/deletion,
+ * and other stuff.
  *
  * @author Daniel Yates & Dale Emasiri
  * @version 1.0
  */
-class Database_Maintenance extends Database {
+class Database_Utility {
 	/**
 	 * Stores a reference to the global CI instance.
 	 */
 	public $CI;
+	/**
+	 * Stores a reference to the database connection.
+	 */
+	protected $connection;
 	/**
 	 * Contains a register of table data. This register includes assigned mutators, fields, relations and
 	 * other stuff.
@@ -18,9 +23,28 @@ class Database_Maintenance extends Database {
 	/**
 	 * Constructor
 	 */
-	public final function __construct() {
-		// Inherit the database.
-		parent::__construct();
+	public function __construct() {
+		// Sort out the CI reference.
+		$this->CI =& get_instance();
+		// Reference the connection object.
+		$this->connection =& $this->CI->database->connection;
+	}
+	/**
+	 * Checks the database to see if a table with the given name exists.
+	 *
+	 * @param string $table The name of the table to check for.
+	 */
+	public final function table_exists($table) {
+		// Execute a quick query.
+		$result = $this->connection->query("SHOW TABLES LIKE '" . $this->CI->config->database->prefix . "config'");
+		// Any results?
+		if($result->num_rows > 0) {
+			// A table named config exists, coolio.
+			return TRUE;
+		} else {
+			// Nope!
+			return FALSE;
+		}
 	}
 	/**
 	 * Creates tables and places them in the forum database, after loading all the definitions.
@@ -28,7 +52,7 @@ class Database_Maintenance extends Database {
 	 */
 	public final function create_tables() {
 		// Attempt to load all unloaded tables.
-		$this->CI->database->utility->_load_all_tables();
+		$this->CI->db_loader->_load_all_tables();
 		// Disable FK checks for this database. Allows us to insert tables in any order we like.
 		$this->CI->db->query("SET FOREIGN_KEY_CHECKS = 0");
 		// Right, go through the tables array.
@@ -122,7 +146,7 @@ class Database_Maintenance extends Database {
 	 */
 	public final function drop_tables() {
 		// Attempt to load all unloaded tables.
-		$this->CI->database->utility->_load_all_tables();
+		$this->CI->db_loader->_load_all_tables();
 		// Disable FK checks for this database. Allows us to delete tables in any order we like.
 		$this->CI->db->query("SET FOREIGN_KEY_CHECKS = 0");
 		// Right, go through the tables array.
@@ -140,7 +164,7 @@ class Database_Maintenance extends Database {
 	 */
 	public final function empty_tables() {
 		// Attempt to load all unloaded tables.
-		$this->CI->database->utility->_load_all_tables();
+		$this->CI->db_loader->_load_all_tables();
 		// Right, go through the tables array.
 		foreach($this->tables as $table => $data) {
 			// Empty this table.
@@ -148,5 +172,5 @@ class Database_Maintenance extends Database {
 		}
 	}
 }
-/* End of file database.php */
-/* Location: ./apps/libraries/database.php */
+/* End of file database_utility.php */
+/* Location: ./apps/libraries/database/database_utility.php */

@@ -11,10 +11,16 @@ $lang['error_generic'] =
 $lang['error_function_not_yet_implemented'] =
 		'The \'%f\' function in the \'%c\' class is not yet implemented.';
 $lang['error_function_obsolete'] =
-		'The \'%f\' function in the \'%c\' class is considered obsolete, and cannot be used.
+		'The \'%f\' function in the \'%c\' class is considered obsolete, and should not be used.
 		Instead, use the \'%nf\' function in the \'%nc\' class.';
 $lang['error_server_teapot'] =
 		'This HTCPCP server is a teapot.';
+/**
+ |---------------------------------------------------------------
+ | CATEGORY: DATABASE
+ |---------------------------------------------------------------
+ */
+$lang['error_database_driver_not_found'] = 'The \'%s\' database driver does not exist.';
 /**
  |---------------------------------------------------------------
  | CATEGORY: LOADER
@@ -37,17 +43,6 @@ $lang['error_session_ownership'] =
 		'There was an error verifying your ownership of the current session.';
 $lang['error_session_update'] =
 		'There was an error updating your session data.';
-/**
- |---------------------------------------------------------------
- | CATEGORY: SECURITY
- |---------------------------------------------------------------
- */
-$lang['error_security_missing_salt'] =
-		'There was an error encoding or decoding the password.'; // Be very generic. This is logged anyhow.
-$lang['error_security_password_length'] =
-		'The given password is too short to decode.';
-$lang['error_security_file_not_writeable'] =
-		'The cryptography settings file is not writeable.';
 /**
  |---------------------------------------------------------------
  | CATEGORY: FILE

@@ -9,10 +9,6 @@
  */
 class CI_Session {
 	/**
-	 * Stores a reference to the global CI object.
-	 */
-	public $CI;
-	/**
 	 * Stores the timestamp as of now. Set during initialization.
 	 */
 	private $now;
@@ -48,8 +44,8 @@ class CI_Session {
 	 * Sets up the reference to the CI super object.
 	 */
 	public final function __construct() {
-		// Set up the CI reference.
-		$this->CI =& get_instance();
+		// Reference the properties of the CI super object.
+		_assign_instance_properties($this);
 	}
 	/**
 	 * Called during board initialization. Validates the user's session key, making new ones if needed.
@@ -138,7 +134,7 @@ class CI_Session {
 		// Only update if we actually NEED to, or if we're told to.
 		if(md5($session) != $this->session_checksum || $force_update == TRUE) {
 			// Write the session data to a file in "output/sessions/<session_id>.sess".
-			file_put_contents(APPPATH . '/output/sessions/' . $this->session_keys['session_id'] . '.sess', $session);
+			file_put_contents(APPPATH . 'output/sessions/' . $this->session_keys['session_id'] . '.sess', $session);
 		}
 	}
 	/**
@@ -176,9 +172,9 @@ class CI_Session {
 				$this->client_keys,
 				array(
 					// User-Agent string, clipped to 50 chars.
-					'user_agent' => substr($this->CI->input->user_agent(), 0, 50),
+					'user_agent' => substr($this->input->user_agent(), 0, 50),
 					// IP address. Self-explanatory.
-					'ip_address' => $this->CI->input->ip_address(),
+					'ip_address' => $this->input->ip_address(),
 				)
 			);
 		// Is anything missing from the session keys?
@@ -202,7 +198,7 @@ class CI_Session {
 	 */
 	private final function get_session_data() {
 		// Get the user's session data. Does a session with this ID exist?
-		$session = @file_get_contents(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
+		$session = @file_get_contents(APPPATH . 'output/sessions/' . $this->client_keys['session_id'] . '.sess');
 		// If it exists, unserialize it/update checksum.
 		if($session == FALSE) {
 			// But it doesn't.
@@ -246,9 +242,9 @@ class CI_Session {
 	 */
 	private final function destroy_session_file() {
 		// Make sure a file exists with this name.
-		if(file_exists(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess')) {
+		if(file_exists(APPPATH . 'output/sessions/' . $this->client_keys['session_id'] . '.sess')) {
 			// Delete it.
-			unlink(APPPATH . '/output/sessions/' . $this->client_keys['session_id'] . '.sess');
+			unlink(APPPATH . 'output/sessions/' . $this->client_keys['session_id'] . '.sess');
 		}
 	}
 	/**
@@ -256,12 +252,12 @@ class CI_Session {
 	 */
 	private final function destroy_old_sessions() {
 		// Get a list of all the files in the session output folder.
-		$files = array_diff(scandir(APPPATH . '/output/sessions/'), array(".", ".."));
+		$files = array_diff(scandir(APPPATH . 'output/sessions/'), array(".", ".."));
 		foreach($files as $file) {
 			// Is the last-modified time of this file longer than the TTL?
-			if(filemtime(APPPATH . '/output/sessions/' . $file) + $this->ttl < $this->now) {
+			if(filemtime(APPPATH . 'output/sessions/' . $file) + $this->ttl < $this->now) {
 				// Delete it.
-				unlink(APPPATH . '/output/sessions/' . $file);
+				unlink(APPPATH . 'output/sessions/' . $file);
 			}
 		}
 	}
@@ -286,7 +282,7 @@ class CI_Session {
 		// Get the user's last_activity string.
 		$last_update = $this->client_keys['last_activity'];
 		// TIme to revalidate?
-		if($this->CI->security->revalidate($last_update) == TRUE) {
+		if($this->security->revalidate($last_update) == TRUE) {
 			// It was ages ago. Alright. Update their keys, but store a copy of their current session ID.
 			$session_id = $this->client_keys['session_id'];
 			// Update.
@@ -296,9 +292,9 @@ class CI_Session {
 			$this->session_keys['token'] = $this->client_keys['token'];
 			$this->session_keys['last_activity'] = $this->client_keys['last_activity'];
 			// Rename the old session file they had.
-			rename(APPPATH . '/output/sessions/' . $session_id . '.sess', APPPATH . '/output/sessions/' . $this->get_id() . '.sess');
+			rename(APPPATH . 'output/sessions/' . $session_id . '.sess', APPPATH . 'output/sessions/' . $this->get_id() . '.sess');
 			// Update their cache stores.
-			$this->CI->cache->cache_update($session_id, $this->get_id());
+			$this->cache->cache_update($session_id, $this->get_id());
 		}
 	}
 	/**
@@ -324,9 +320,9 @@ class CI_Session {
 		// Make up some awesome data.
 		$this->client_keys = array(
 			// Session Identifer. Random + IP, hashed.
-			'session_id' => hash('ripemd160',$this->CI->security->generate_string() . $this->CI->input->ip_address()),
+			'session_id' => hash('ripemd160',$this->security->generate_string() . $this->input->ip_address()),
 			// Uniquely generated token. This remains constant throughout the user's visit.
-			'token' => hash('ripemd160', $this->CI->security->generate_string()),
+			'token' => hash('ripemd160', $this->security->generate_string()),
 			// Last Activity token. Timestamp of last load.
 			'last_activity' => $this->now
 		);

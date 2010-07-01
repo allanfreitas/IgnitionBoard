@@ -5,7 +5,7 @@
  * @author Daniel Yates & Dale Emasiri
  * @version 1.0
  */
-class Database_Result extends Database {
+class Database_Result {
 	/**
 	 * Stores a reference to the global CI instance.
 	 */
@@ -14,9 +14,9 @@ class Database_Result extends Database {
 	 * Constructor
 	 */
 	public function __construct() {
-		// Inherit the database.
-		parent::__construct();
+		// Sort out the CI reference.
+		$this->CI =& get_instance();
 	}
 }
-/* End of file database.php */
-/* Location: ./apps/libraries/database.php */
+/* End of file database_result.php */
+/* Location: ./apps/libraries/database/database_result.php */

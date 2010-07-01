@@ -7,17 +7,13 @@
  */
 class Error {
 	/**
-	 * Stores a reference to the global CI object.
-	 */
-	public $CI;
-	/**
 	 * Constructor for the Error lib.
 	 */
 	function __construct() {
-		// Get reference of the CI object.
-		$this->CI =& get_instance();
+		// Reference the properties of the CI super object.
+		_assign_instance_properties($this);
 		// Load the appropriate language file.
-		$this->CI->lang->load('error', $this->CI->language->get());
+		$this->lang->load('error', $this->language->get());
 	}
 	/**
 	 * Outputs an error message using CI's built in show_error() function. The difference is this takes an
@@ -29,11 +25,11 @@ class Error {
 	 */
 	function show($error, $vars = NULL) {
 		// Get the error string to display.
-		$str = $this->CI->lang->line('error_' . $error);
+		$str = $this->lang->line('error_' . $error);
 		// Did we get a result?
 		if($str == "") {
 			// Put in a generic error.
-			$str = $this->CI->lang->line('error_generic');
+			$str = $this->lang->line('error_generic');
 		}
 		// Parse it if needed.
 		if(is_array($vars)) {
@@ -55,8 +51,8 @@ class Error {
 	 * Outputs a message if we're in debug/dev mode.
 	 */
 	function debug($message, $indent = 0) {
-		if($this->CI->uri->segment(1) == "dev" || get_cookie("dev") == TRUE) {
-			echo str_repeat("\t", $indent) . $message . "<br />";
+		if($this->router->class == "dev") {
+			$this->output->append_output(str_repeat("\t", $indent) . $message . "\n");
 		}
 	}
 }

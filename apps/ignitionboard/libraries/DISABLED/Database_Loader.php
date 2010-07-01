@@ -1,11 +1,11 @@
 <?php if (! defined('BASEPATH')) exit('No direct script access allowed');
 /**
- * The Database library manages the loading of records and other critical functions.
+ * The Database loader library handles the loading of things like table models.
  *
  * @author Daniel Yates & Dale Emasiri
  * @version 1.0
  */
-class Database_Utility extends Database {
+class Database_Loader {
 	/**
 	 * Stores a reference to the global CI instance.
 	 */
@@ -18,29 +18,10 @@ class Database_Utility extends Database {
 	 * Constructor
 	 */
 	public function __construct() {
-		// Inherit the database.
-		parent::__construct();
+		// Sort out the CI reference.
+		$this->CI =& get_instance();
 		// Assign the _load_table() function as a candidate for an autoloader.
 		spl_autoload_register(array($this, '_load_table'));
-	}
-	/**
-	 * Checks the database configuration file for valid connection data.
-	 */
-	public final function check_config() {
-		// Either return the database_check_config cache item or run _check_config();
-		return $this->CI->cache->get('database_check_config', 'functions', array(&$this, "_check_config"), TRUE);
-	}
-	/**
-	 * Cleans an input string
-	 *
-	 * @param <type> $string
-	 * @param <type> $ruleset
-	 */
-	public final function clean($string, $ruleset = "STRICT") {
-		$this->CI->error->show('function_not_yet_implemented', array(
-			'%f' => __FUNCTION__,
-			'%c' => __CLASS__
-		));
 	}
 	/**
 	 * Loads the contents of the models/database folder into the registered tables array.
@@ -109,43 +90,6 @@ class Database_Utility extends Database {
 		// Empty the array.
 		$this->registered_tables = array();
 	}
-	/**
-	 * Does the actual 'checking' of the config file for valid connection settings.
-	 */
-	public final function _check_config() {
-		// Load DB settings.
-		require APPPATH . '/config/database.php';
-		// Make sure the var exists.
-		if(!isset($db)) {
-			// Die!
-			return FALSE;
-		} else {
-			// If any important stuff is empty, it's not set up.
-			if($db['default']['username'] == '' || $db['default']['password'] == ''	||
-			   $db['default']['database'] == '' || $db['default']['hostname'] == '' ) {
-			return FALSE;
-			} else {
-				// Can we actually connect?
-				// Attempt to make a connection.
-				if(@mysql_connect($db['default']['hostname'], $db['default']['username'],
-								  $db['default']['password'], TRUE) != FALSE) {
-					// Good. Try switching to the db.
-					if(@mysql_select_db($db['default']['database']) != FALSE) {
-						// Good, they worked.
-						mysql_close();
-						return TRUE;
-					} else {
-						// Error!
-						mysql_close();
-						return FALSE;
-					}
-				} else {
-					// Error!
-					return FALSE;
-				}
-			}
-		}
-	}
 }
-/* End of file database.php */
-/* Location: ./apps/libraries/database.php */
+/* End of file database_loader.php */
+/* Location: ./apps/libraries/database/database_loader.php */

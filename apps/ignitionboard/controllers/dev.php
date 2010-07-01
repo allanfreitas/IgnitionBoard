@@ -23,7 +23,7 @@ class Dev extends IBB_Controller {
 		}
 		// Finish debug output.
 		$this->error->debug("\nController Execution Complete.");
-		echo "</pre>";
+		$this->error->debug("</pre>");
 	}
 	function create_db_tables() {
 		$this->database->maintenance->create_tables();
@@ -58,8 +58,11 @@ class Dev extends IBB_Controller {
 	function get_category_record() {
 		echo "Retrieving category name for board ID #4:<br />";
 		$item = new DB_Board();
-		$item->get_by_id(4);
-		echo $item->category_id->name;
+		$item->get_by_id(1);
+		$item_2 = $item->category_id->get_child_boards();
+//		echo $item->category_id->name;
+		var_dump($item->category_id->parent_id);
+		var_dump($item_2);
 	}
 	function drop_db_tables() {
 		$this->database->maintenance->drop_tables();

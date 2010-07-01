@@ -117,7 +117,6 @@ abstract class DB_Model_Abstract {
 	 * So say a user model was related to the telephone model by the telephone field, accessing the telephone
 	 * field would link to this new instance we're making.
 	 *
-	 * @todo Consider intermediary (autoloader) for relatives, so we only populate on access.
 	 * @param string $field The name of the field with the relationship.
 	 * @param string $data The data that this field contains, used as the clause in the get() call.
 	 */
@@ -576,19 +575,7 @@ abstract class DB_Model_Abstract {
  * Acts as an intermediary between models and other models. Helps performance a bit.
  * Allows us to load model on demand, rather than loading things we might never need.
  */
-class DB_Model_Delegate {
-	/**
-	 * Stores the name of the model this delegate works for.
-	 */
-	protected $_delegate_name = NULL;
-	/**
-	 * Stores the loaded model inside of this delegate.
-	 */
-	protected $_delegate_model = NULL;
-	/**
-	 * Stores the name of a function to call when this model is initialized.
-	 */
-	protected $_delegate_callback = NULL;
+class DB_Model_Delegate extends IBB_Delegate {
 	/**
 	 * Stores the arguments to pass to this function
 	 */
@@ -600,104 +587,25 @@ class DB_Model_Delegate {
 	 *
 	 * @param string $name Name of the model to load.
 	 */
-	public function __construct($name, $function = NULL, $args = NULL) {
+	public function __construct($name, $function, $args) {
 		// Set properties.
 		$this->_delegate_name = $name;
-		$this->_delegate_callback = $function;
+		$this->_delegate_initialize_function = $function;
 		$this->_delegate_arguments = $args;
 	}
 	/**
 	 * Initializes the assigned model and fires any callbacks. Only happens once.
 	 */
-	public final function initialize_model() {
+	public final function _delegate_initialize() {
 		// How's the model faring?
-		if($this->_delegate_model == NULL) {
+		if($this->_delegate_object == NULL) {
 			// Oh dear oh dear. Load it.
 			$name = $this->_delegate_name;
 			// Go.
-			$this->_delegate_model = new $name();
-			// Callback?
-			if($this->_delegate_callback != NULL) {
-				$this->_delegate_model->{$this->_delegate_callback}($this->_delegate_arguments);
-			}
+			$this->_delegate_object = new $name();
+			// Callback.
+			$this->_delegate_object->{$this->_delegate_initialize_function}($this->_delegate_arguments);
 		}
-	}
-	/**
-	 * -------------------------------------------------------------------------------------------------------
-	 * PROPERTY OVERLOADS
-	 * -------------------------------------------------------------------------------------------------------	 *
-	 */
-	/**
-	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
-	 * the property is passed to this function.
-	 * From here we check if the model needs loading, fire callbacks and then pass the property name on.
-	 *
-	 * @param string The name of the property to access.
-	 */
-	public function __get($name) {
-		// Check initialization state.
-		$this->initialize_model();
-		// Pass the call on.
-		return $this->_delegate_model->$name;
-	}
-	/**
-	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
-	 * the property is passed to this function.
-	 * From here we check if the model needs loading, fire callbacks and then pass the property name and
-	 * value on.
-	 *
-	 * @param string The name of the property to access.
-	 * @param string The value to set.
-	 */
-	public function __set($name, $value) {
-		// Check initialization state.
-		$this->initialize_model();
-		// Pass the call on.
-		$this->_delegate_model->$name = $value;
-	}
-	/**
-	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
-	 * the property is passed to this function.
-	 * From here we check if the model needs loading, fire callbacks and then check the value ourselves.
-	 *
-	 * @param string The name of the property to access.
-	 */
-	public function __isset($name) {
-		// Check initialization state.
-		$this->initialize_model();
-		// Pass the call on.
-		return isset($this->_delegate_model->$name);
-	}
-	/**
-	 * Handles all the intermediary stuff. If a property of the assigned model is accessed, the name of
-	 * the property is passed to this function.
-	 * From here we check if the model needs loading, fire callbacks and then unset the property.
-	 *
-	 * @param string The name of the property to access.
-	 */
-	public function __unset($name) {
-		// Check initialization state.
-		$this->initialize_model();
-		// Pass the call on.
-		unset($this->_delegate_model->$name);
-	}
-	/**
-	 * -------------------------------------------------------------------------------------------------------
-	 * FUNCTION OVERLOADS
-	 * -------------------------------------------------------------------------------------------------------
-	 */
-	/**
-	 * Handles more intermediary stuff. If a function of the assigned model is accessed, the name of the
-	 * function is passed on to the model itself after we load it.
-	 *
-	 * @param string $name The name of the function to call.
-	 * @param $arguments
-	 */
-	public function  __call($name, $arguments) {
-		// Check initialization state.
-		$this->initialize_model();
-		// Pass call on.
-		return call_user_func_array(array(&$this->_delegate_model, $name), $arguments);
 	}
 }
 /* End of file db_table.php */

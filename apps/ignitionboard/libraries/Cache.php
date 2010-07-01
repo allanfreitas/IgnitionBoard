@@ -7,15 +7,11 @@
  */
 class Cache {
 	/**
-	 * Stores a reference to the CI super-object.
-	 */
-	private $CI;
-	/**
 	 * Storage array containing each created cache "store", which itself is an array containing data.
 	 *
 	 * @var array Cache stores.
 	 */
-	private $cache = array();
+	private $cache_stores = array();
 	/**
 	 * Chance for the delete_output() function to be called to remove old cache files.
 	 */
@@ -26,8 +22,8 @@ class Cache {
 	 * Sets up CI reference.
 	 */
 	public final function __construct() {
-		// Get a reference of the CI super-object.
-		$this->CI =& get_instance();
+		// Reference the properties of the CI super object.
+		_assign_instance_properties($this);
 	}
 	/**
 	 * Sets up needed cache stores and clears expired page caches.
@@ -46,15 +42,15 @@ class Cache {
 	 */
 	public final function cache_output() {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// User need a cache dir?
 			$this->cache_mkdir();
 			// Get the output.
-			$output = $this->CI->output->get_output();
+			$output = $this->output->get_output();
 			// Get the user's session ID.
-			$session = $this->CI->session->get_id();
+			$session = $this->session->get_id();
 			// Write the output into a new file with this controller name.
-			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			$page = $this->router->class . "." . $this->router->method;
 			// Go!
 			file_put_contents(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache', $output);
 		}
@@ -65,15 +61,15 @@ class Cache {
 	 */
 	public final function cache_request() {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// Get the user's session ID.
-			$session = $this->CI->session->get_id();
+			$session = $this->session->get_id();
 			// Get controller name.
-			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			$page = $this->router->class . "." . $this->router->method;
 			// Check to see if a cached file exists.
 			if(file_exists(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache')) {
 				// When was it last modified?
-				if(filemtime(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache') + $this->CI->config->board->cache->duration > time()) {
+				if(filemtime(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache') + $this->config->board->cache->duration > time()) {
 					// Modified not too long ago, return TRUE.
 					return TRUE;
 				} else {
@@ -94,11 +90,11 @@ class Cache {
 	 */
 	public final function cache_retrieve() {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// Get the user's session ID.
-			$session = $this->CI->session->get_id();
+			$session = $this->session->get_id();
 			// Get controller name.
-			$page = $this->CI->router->class . "." . $this->CI->router->method;
+			$page = $this->router->class . "." . $this->router->method;
 			// Return the cache file.
 			return file_get_contents(APPPATH . '/output/cache/' . $session . '/' . $page . '.cache');
 		} else {
@@ -114,7 +110,7 @@ class Cache {
 	 */
 	public final function cache_update($old, $new) {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// Does a folder exist for the old user?
 			if(file_exists(APPPATH . '/output/cache/' . $old . '/')) {
 				// Rename it.
@@ -127,7 +123,7 @@ class Cache {
 	 */
 	private final function cache_clear() {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// Get all of the sessions which still exist.
 			$sessions = array_diff(scandir(APPPATH . '/output/sessions/'), array('.', '..'));
 			// Get all of the session caches.
@@ -153,9 +149,9 @@ class Cache {
 	 */
 	private final function cache_mkdir() {
 		// Page Cache enabled?
-		if($this->CI->config->board->cache->enabled == TRUE) {
+		if($this->config->board->cache->enabled == TRUE) {
 			// Does this user need a cache dir?
-			$session = $this->CI->session->get_id();
+			$session = $this->session->get_id();
 			if(file_exists(APPPATH . '/output/cache/' . $session . '/') == FALSE) {
 				// Make one.
 				mkdir(APPPATH . '/output/cache/' . $session . '/');
@@ -183,7 +179,7 @@ class Cache {
 			}
 		}
 		// Add the new store.
-		$this->cache[$name] = array();
+		$this->cache_stores[$name] = array();
 		// Return.
 		return TRUE;
 	}
@@ -195,7 +191,7 @@ class Cache {
 	 */
 	public final function has_store($name) {
 		// Check existance.
-		if(array_key_exists($name, $this->cache)) {
+		if(array_key_exists($name, $this->cache_stores)) {
 			// Exists.
 			return TRUE;
 		} else {
@@ -225,7 +221,7 @@ class Cache {
 			}
 		}
 		// Add item.
-		$this->cache[$store][$key] = $data;
+		$this->cache_stores[$store][$key] = $data;
 		// Return.
 		return TRUE;
 	}
@@ -242,7 +238,7 @@ class Cache {
 		// Item exist?
 		if($this->has_item($key, $store)) {
 			// Return it.
-			return $this->cache[$store][$key];
+			return $this->cache_stores[$store][$key];
 		} else {
 			// Got a default?
 			if($default != FALSE) {
@@ -251,17 +247,17 @@ class Cache {
 					// What is it, exactly?
 					if(is_array($default)) {
 						// Execute it differently.
-						$this->cache[$store][$key] = $default[0]->$default[1]();
+						$this->cache_stores[$store][$key] = $default[0]->$default[1]();
 					} else {
 						// Execute it like any normal function.
-						$this->cache[$store][$key] = $default();
+						$this->cache_stores[$store][$key] = $default();
 					}
 				} else {
 					// Return default, after setting it into the cache at this key.
-					$this->cache[$store][$key] = $default;
+					$this->cache_stores[$store][$key] = $default;
 				}
 				// Return the value.
-				return $this->cache[$store][$key];
+				return $this->cache_stores[$store][$key];
 			} else {
 				// Return FALSE.
 				return FALSE;
@@ -283,7 +279,7 @@ class Cache {
 			$this->add($data, $key, $store);
 		} else {
 			// Update.
-			$this->cache[$store][$key] = $data;
+			$this->cache_stores[$store][$key] = $data;
 		}
 	}
 	/**
@@ -297,7 +293,7 @@ class Cache {
 		// Store exist?
 		if($this->has_store($store)) {
 			// Check existance.
-			if(array_key_exists($key, $this->cache[$store])) {
+			if(array_key_exists($key, $this->cache_stores[$store])) {
 				// Exists.
 				return TRUE;
 			} else {
@@ -320,7 +316,7 @@ class Cache {
 		// Item exist?
 		if($this->has_item($key, $store)) {
 			// Remove it.
-			unset($this->cache[$store][$key]);
+			unset($this->cache_stores[$store][$key]);
 			// Return.
 			return TRUE;
 		} else {
@@ -338,7 +334,7 @@ class Cache {
 		// Store exist?
 		if($this->has_store($name)) {
 			// Good. Delete.
-			unset($this->cache[$name]);
+			unset($this->cache_stores[$name]);
 		} else {
 			// Error.
 			return FALSE;

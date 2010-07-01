@@ -8,10 +8,6 @@
  */
 class IBB_Parser extends CI_Parser {
 	/**
-	 * Stores a reference to the global CI object.
-	 */
-	public $CI;
-	/**
 	 * Stores a list of templates to parse in order of which they go.
 	 *
 	 * @var array The templates to parse.
@@ -21,10 +17,8 @@ class IBB_Parser extends CI_Parser {
 	 * Constructor.
 	 */
 	public function __construct() {
-		// DON'T set up parent, as the parser lib has no constructor. PHP error.
-		// parent::CI_Parser();
-		// Set up the CI reference.
-		$this->CI =& get_instance();
+		// Reference the properties of the CI super object.
+		_assign_instance_properties($this);
 	}
 	/**
 	 * Starts the parser, going through all included files for this page and sending them to the output stuff.
@@ -37,7 +31,7 @@ class IBB_Parser extends CI_Parser {
 		// Get default data.
 		$data = $this->_get_template_data();
 		// Kick some ass! Seriously.
-		// $this->CI->body->actions->hostile->kick($this->CI->targets[0]->ass);
+		// $this->body->actions->hostile->kick($this->targets[0]->ass);
 		// Ok not so seriously. Including frames?
 		if($frames) {
 			// Right. BUT DON'T YOU EVER LET ME CATCH YOU INCLUDING FRAMES AGAIN. Parse the header.
@@ -84,10 +78,10 @@ class IBB_Parser extends CI_Parser {
 	 */
 	private function _parse($template, $data) {
 		// Load the template file as a view, don't append to output. Return as string.
-		$template = $this->CI->load->view($template, $data, TRUE);
+		$template = $this->load->view($template, $data, TRUE);
 		// Make sure the template existed.
 		if ($template == '') {
-			$this->CI->error->show('template_not_found', $template);
+			$this->error->show('template_not_found', $template);
 		}
 		// Go through our data array.
 		if(is_array($data)) {
@@ -103,7 +97,7 @@ class IBB_Parser extends CI_Parser {
 			}
 		}
 		// Append this to our output.
-		$this->CI->output->append_output($template);
+		$this->output->append_output($template);
 	}
 	/**
 	 * Parses a template, replacing pseudo-variables inside of the template with the real deal.
@@ -141,12 +135,12 @@ class IBB_Parser extends CI_Parser {
 	private function _get_template_data() {
 		// Make an array and put data in it! I LIKE THIS IDEA.
 		$template_data = array(
-			"BOARD_THEME" => $this->CI->config->board->themes->name,
+			"BOARD_THEME" => $this->config->board->themes->name,
 			"BOARD_THEME_URL" =>  $this->_get_theme_url(),
 			"BOARD_THEME_CSS" => $this->_get_theme_css(),
 			"BOARD_THEME_JS" => $this->_get_theme_js(),
 			"BOARD_THEME_IMG" => $this->_get_theme_url() . "img/",
-			"BOARD_TITLE" => $this->CI->config->board->text->title,
+			"BOARD_TITLE" => $this->config->board->text->title,
 			"BOARD_PAGE_NAME" => $this->_get_template_name()
 		);
 		// Return the array.
@@ -161,7 +155,7 @@ class IBB_Parser extends CI_Parser {
 		// Server path.
 		$path[1] = $this->_get_theme_url(TRUE) . "css/";
 		// Compression enabled?
-		if($this->CI->config->board->compression->css) {
+		if($this->config->board->compression->css) {
 			// Compression enabled, we'll be using the master.php file. If it exists.
 			// Does it?
 			if(file_exists($path[1] . "master.php")) {
@@ -169,7 +163,7 @@ class IBB_Parser extends CI_Parser {
 				return $path[0] . "master.php";
 			} else {
 				// Error out. This file can't be downgraded to default theme.
-				$this->CI->error->show('template_css_not_compressible', $this->CI->config->board->themes->name);
+				$this->error->show('template_css_not_compressible', $this->config->board->themes->name);
 			}
 		} else {
 			// Compression disabled, use the normal master.css file.
@@ -185,7 +179,7 @@ class IBB_Parser extends CI_Parser {
 		// Server path.
 		$path[1] = $this->_get_theme_url(TRUE) . "js/";
 		// Compression enabled?
-		if($this->CI->config->board->compression->js) {
+		if($this->config->board->compression->js) {
 			// Compression enabled, we'll be using the master.php file. If it exists.
 			// Does it?
 			if(file_exists($path[1] . "master.php")) {
@@ -193,7 +187,7 @@ class IBB_Parser extends CI_Parser {
 				return array(array("BOARD_THEME_JS.URL" => $path[0] . "master.php"));
 			} else {
 				// Error out. This file can't be downgraded to default theme.
-				$this->CI->error->show('template_js_not_compressible', $this->CI->config->board->themes->name);
+				$this->error->show('template_js_not_compressible', $this->config->board->themes->name);
 			}
 		} else {
 			// Compression disabled, use the normal javascript files file.
@@ -218,20 +212,20 @@ class IBB_Parser extends CI_Parser {
 			'register' => 'Register'
 		);
 		// Let's see if this page exists shall we?
-		if(array_key_exists($this->CI->router->class, $names)) {
+		if(array_key_exists($this->router->class, $names)) {
 			// Good. Is the entry at this key an array or string?
-			if(is_array($names[$this->CI->router->class])) {
+			if(is_array($names[$this->router->class])) {
 				// Array, so the keys in here represent methods in the controller. Does this method exist?
-				if(array_key_exists($this->CI->router->method, $names[$this->CI->router->class])) {
+				if(array_key_exists($this->router->method, $names[$this->router->class])) {
 					// It does. Return it.
-					return $names[$this->CI->router->class][$this->CI->router->method];
+					return $names[$this->router->class][$this->router->method];
 				} else {
 					// Nope. Empty handed!
 					return '';
 				}
 			} else {
 				// Not array. Return whatever it is.
-				return $names[$this->CI->router->class];
+				return $names[$this->router->class];
 			}
 		} else {
 			// Nope. Go back empty handed.
@@ -246,8 +240,8 @@ class IBB_Parser extends CI_Parser {
 	 */
 	private function _get_theme_url($server = false, $theme = "") {
 		// Return the path.
-		return	(($server) ? $this->CI->config->paths->server->themes : $this->CI->config->paths->public->themes) .
-				(empty($theme) ? $this->CI->config->board->themes->url : $theme);
+		return	(($server) ? $this->config->paths->server->themes : $this->config->paths->public->themes) .
+				(empty($theme) ? $this->config->board->themes->url : $theme);
 	}
 	/**
 	 * Prepends the absolute path to the given template file path. Checks to see if it exists and defaults
@@ -255,16 +249,16 @@ class IBB_Parser extends CI_Parser {
 	 */
 	private function _get_template_path($template) {
 		// Make a full path to the view.
-		$template_path = $this->CI->config->board->themes->url . 'templates/' . $template;
+		$template_path = $this->config->board->themes->url . 'templates/' . $template;
 		// Check if the view we have doesn't exist.
-		if(!file_exists($this->CI->config->paths->server->themes . $template_path . '.php')) {
+		if(!file_exists($this->config->paths->server->themes . $template_path . '.php')) {
 			// File doesn't exist, bad. Fix it. Use default theme instead.
 			$template_path = 'ignited/' . $template;
 			// NOW does it exist?
-			if(!file_exists($this->CI->config->paths->server->themes . $template_path . '.php')) {
+			if(!file_exists($this->config->paths->server->themes . $template_path . '.php')) {
 				// Still doesn't exist, in that case I suggest an error is in order.
-				$this->CI->error->show('template_not_found',
-						$this->CI->config->paths->public->themes . $template_path . '.php');
+				$this->error->show('template_not_found',
+						$this->config->paths->public->themes . $template_path . '.php');
 				die();
 			}
 		}

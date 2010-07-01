@@ -18,21 +18,6 @@ class DB_Board extends DB_Model_Abstract {
 		self::set_table_name('board');
 		// Add relations.
 		self::has_relation('category_id', 'id', 'category');
-		// Add mutators.
-		self::has_mutator('name', '_salt_name');
-		self::has_mutator('name', '_desalt_name', 'GET');
-	}
-	/**
-	 * Test SET mutator.
-	 */
-	public final function _salt_name($value) {
-		return "SALTLOL_" . $value;
-	}
-	/**
-	 * Test GET mutator.
-	 */
-	public final function _desalt_name($value) {
-		return substr($value, 8);
 	}
 }
 

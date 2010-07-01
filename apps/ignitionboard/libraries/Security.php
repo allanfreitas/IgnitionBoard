@@ -8,10 +8,6 @@
  */
 class Security {
 	/**
-	 * Stores a reference to the global CI object.
-	 */
-	public $CI;
-	/**
 	 * Stores the timestamp as of now. Set during initialization.
 	 */
 	private $now;
@@ -24,8 +20,8 @@ class Security {
 	 * Constructor.
 	 */
 	public function __construct() {
-		// Set up the CI reference.
-		$this->CI =& get_instance();
+		// Reference the properties of the CI super object.
+		_assign_instance_properties($this);
 		// Set up some variables.
 		$this->now = time();
 	}
@@ -77,16 +73,16 @@ class Security {
 	 */
 	public final function generate_challenge($sess_prefix) {
 		// Only generate a new challenge if one doesn't exist with this name. Fixes a bug with Chrome.
-		if($this->CI->session->get($sess_prefix . '_challenge') == FALSE) {
+		if($this->session->get($sess_prefix . '_challenge') == FALSE) {
 			// Make a stwing!
 			$challenge = $this->generate_string(32, FALSE);
 			// Set to sess!
-			$this->CI->session->set($sess_prefix . '_challenge', $challenge);
+			$this->session->set($sess_prefix . '_challenge', $challenge);
 			// Go home, challenge!
 			return $challenge;
 		} else {
 			// Return the one we have.
-			return $this->CI->session->get($sess_prefix . '_challenge');
+			return $this->session->get($sess_prefix . '_challenge');
 		}
 	}
 	/**
@@ -98,12 +94,12 @@ class Security {
 	 */
 	public final function check_challenge($post_key, $sess_prefix) {
 		// Do something AWESOME. Like...Get the super-duper challenge string from the session! If we can.
-		$challenge = $this->CI->session->get($sess_prefix . '_challenge');
+		$challenge = $this->session->get($sess_prefix . '_challenge');
 		// Did it exist? Really?
 		if($challenge != FALSE) {
 			// YAY!
 			// Do the two strings match?
-			if($challenge == $this->CI->input->post($post_key)) {
+			if($challenge == $this->input->post($post_key)) {
 				// YAY!
 				return TRUE;
 			} else {
@@ -122,7 +118,7 @@ class Security {
 	 */
 	public final function unset_challenge($sess_prefix) {
 		// Remove it bro!
-		$this->CI->session->remove($sess_prefix . '_challenge');
+		$this->session->remove($sess_prefix . '_challenge');
 	}
 	/**
 	 * Removes any existing challenge variable at the given index and makes a new one.

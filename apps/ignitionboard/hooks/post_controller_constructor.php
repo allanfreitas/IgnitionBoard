@@ -19,15 +19,13 @@ class Post_Controller_Constructor {
 	public final function initialize_board() {
 		// Get an instance of CI.
 		$this->CI =& get_instance();
-		// Load components (phase 1)
-		$this->_load_components(1);
+		// Load components.
+		$this->_load_components();
 		// Initialize the configuration.
 		$this->CI->config->initialize();
 		// Enable profiler?
 		$this->CI->output->enable_profiler($this->CI->config->board->core->profiler);
-		// Initialize the cache.
-		$this->CI->cache->initialize();
-		// Initialize the session.
+		// Force initialization of the session library.
 		$this->CI->session->initialize();
 		// Is there a cache file we can return?
 		if($this->CI->cache->cache_request() == FALSE) {
@@ -35,12 +33,9 @@ class Post_Controller_Constructor {
 			// Set the view path so that it's in the public templates directory.
 			$this->CI->load->_ci_view_path = $this->CI->config->paths->server->themes;
 			// Check if the board isn't installed, and that we're NOT in the install dir.
-			if($this->CI->config->board->core->installed == FALSE && $this->CI->uri->segment(1) != "install") {
+			if($this->CI->config->board->core->installed == FALSE && $this->CI->router->class != "install") {
 				// Not installed, redirect to /install.
 				//redirect('/install');
-			} else {
-				// Load components (phase 2)
-				$this->_load_components(2);
 			}
 		} else {
 			// We can! Coolio.
@@ -52,34 +47,21 @@ class Post_Controller_Constructor {
 		}
 	}
 	/**
-	 * Loads components based on the loading phase given. Phase 1 is base (core) components needed for
-	 * board initialization. Phase 2 is core components needed across all controllers.
-	 *
-	 * @param int $phase The loading phase to process.
+	 * Registers components for autoloading.
 	 */
-	private final function _load_components($phase = 1) {
-		// Go through possible phases.
-		switch($phase) {
-			case 1:
-				// Load core components.
-				$this->CI->load->add_dependancy('url', 'helper');
-				$this->CI->load->add_dependancy('cookie', 'helper');
-				$this->CI->load->add_library('language');
-				$this->CI->load->add_library('error');
-				$this->CI->load->add_library('cache');
-				$this->CI->load->add_library('database');
-				$this->CI->load->add_library('security');
-				$this->CI->load->add_library('session');
-				// Define BASE_URL as a constant here too.
-				define("BASE_URL", $this->CI->config->slash_item('base_url'));
-				break;
-			case 2:
-				// Load less-important components.
-				$this->CI->load->add_dependancy('form', 'helper');
-				$this->CI->load->add_library('parser');
-				break;
-			case 3:
-				break;
-		}
+	private final function _load_components() {
+		// Load components.
+		$this->CI->load->autoload('url', 'helper');
+		$this->CI->load->autoload('cookie', 'helper');
+		//$this->CI->load->autoload('form', 'helper');
+		$this->CI->load->autoload('language', 'library');
+		$this->CI->load->autoload('error', 'library');
+		$this->CI->load->autoload('cache', 'library', '', 'initialize');
+		$this->CI->load->autoload('database/Database_Core', 'library', 'db', 'initialize');
+		$this->CI->load->autoload('security', 'library');
+		$this->CI->load->autoload('session', 'library');
+		$this->CI->load->autoload('parser', 'library');
+		// Define BASE_URL as a constant here too.
+		define("BASE_URL", $this->CI->config->slash_item('base_url'));
 	}
 }
